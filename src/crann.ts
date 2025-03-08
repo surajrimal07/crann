@@ -5,6 +5,7 @@ import {
   ConfigItem,
   DerivedState,
   Partition,
+  CrannOptions,
 } from "./model/crann.model";
 import {
   AgentInfo,
@@ -14,7 +15,9 @@ import {
   MessageTarget,
 } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
-import { Message, PorterContext, BrowserLocation } from "porter-source";
+import { Message, BrowserLocation } from "porter-source";
+import { trackStateChange } from "./utils/tracking";
+import { DebugManager } from "./utils/debug";
 
 export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private static instance: Crann<any> | null = null;
@@ -34,8 +37,15 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private storagePrefix = "crann_";
   private post: (message: Message<any>, target?: MessageTarget) => void =
     () => {};
+  private debug: boolean = false;
 
-  constructor(private config: TConfig, storagePrefix?: string) {
+  constructor(private config: TConfig, options?: CrannOptions) {
+    // Set the debug flag globally
+    if (options?.debug) {
+      DebugManager.setDebug(true);
+    }
+    this.debug = options?.debug || false;
+    this.storagePrefix = options?.storagePrefix ?? this.storagePrefix;
     this.log("Constructing");
     this.defaultInstanceState = this.initializeInstanceDefault();
     this.defaultServiceState = this.serviceState =
@@ -84,16 +94,15 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.removeInstance(info.id);
       });
     });
-    this.storagePrefix = storagePrefix ?? this.storagePrefix;
   }
 
   public static getInstance<TConfig extends Record<string, ConfigItem<any>>>(
     config: TConfig,
-    storagePrefix?: string
+    options?: CrannOptions
   ): Crann<TConfig> {
     if (!Crann.instance) {
-      Crann.instance = new Crann(config, storagePrefix);
-    } else {
+      Crann.instance = new Crann(config, options);
+    } else if (options?.debug) {
       console.log(
         "CrannSource [static-core], Instance requested and already existed, returning"
       );
@@ -128,6 +137,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
     }
   }
 
+  @trackStateChange
   public async setServiceState(
     state: Partial<DerivedServiceState<TConfig>>
   ): Promise<void> {
@@ -145,6 +155,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
     }
   }
 
+  @trackStateChange
   public async setInstanceState(
     key: string,
     state: Partial<DerivedInstanceState<TConfig>>
@@ -382,10 +393,14 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   }
 
   private log(message: string, ...args: any[]) {
-    console.log(`CrannSource [core], ` + message, ...args);
+    if (this.debug) {
+      console.log(`CrannSource [core], ` + message, ...args);
+    }
   }
   private instanceLog(message: string, key: string, ...args: any[]) {
-    console.log(`CrannSource [${key}], ` + message, ...args);
+    if (this.debug) {
+      console.log(`CrannSource [${key}], ` + message, ...args);
+    }
   }
   private error(message: string, ...args: any[]) {
     console.error(`CrannSource [core], ` + message, ...args);
@@ -397,7 +412,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
 
 export function create<TConfig extends Record<string, ConfigItem<any>>>(
   config: TConfig,
-  storagePrefix?: string
+  options?: CrannOptions
 ): [
   (key?: string) => DerivedState<TConfig>,
   (
@@ -417,7 +432,7 @@ export function create<TConfig extends Record<string, ConfigItem<any>>>(
   ) => void,
   (location: BrowserLocation) => string | null
 ] {
-  const instance = Crann.getInstance(config, storagePrefix);
+  const instance = Crann.getInstance(config, options);
   return [
     instance.get.bind(instance),
     instance.set.bind(instance),

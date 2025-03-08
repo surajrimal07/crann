@@ -1,32 +1,23 @@
 {
-    "compilerOptions": {
-        "target": "ES2018",
-        "module": "ESNext",
-        "lib": [
-            "ES2018",
-            "DOM"
-        ],
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "moduleResolution": "node",
-        "declaration": true,
-        "declarationDir": "./dist/types",
-        "sourceMap": true,
-        "strict": true,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "paths": {
-            "porter-source": [
-                "../porter-source/dist"
-            ],
-        },
-    },
-    "include": [
-        "src/**/*"
-    ],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+  "compilerOptions": {
+    "target": "ES2018",
+    "module": "ESNext",
+    "lib": ["ES2018", "DOM"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "node",
+    "declaration": true,
+    "declarationDir": "./dist/types",
+    "sourceMap": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "porter-source": ["../porter-source/dist"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
