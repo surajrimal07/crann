@@ -75,6 +75,11 @@ type AgentSubscription<TConfig extends AnyConfig> = {
 
 type StateUpdate<TConfig extends AnyConfig> = Partial<DerivedState<TConfig>>;
 
+export type CrannOptions = {
+  debug?: boolean;
+  storagePrefix?: string;
+};
+
 export {
   AnyConfig,
   ConfigItem,

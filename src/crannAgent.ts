@@ -15,9 +15,16 @@ let crannInstance: unknown = null;
 
 export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   config: TConfig,
-  context?: string
+  options?: { context?: string; debug?: boolean }
 ): ConnectReturn<TConfig> {
+  const debug = options?.debug || false;
+  const context = options?.context;
   let _myKey = "unset";
+  const log = (message: string, ...args: any[]) => {
+    if (debug) {
+      console.log(`CrannAgent [${_myKey}] ` + message, ...args);
+    }
+  };
   log("Initializing with context: ", context);
   if (crannInstance) {
     log("We had an instance already, returning");
@@ -104,10 +111,6 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
 
     return [getValue(), setValue, subscribeToChanges];
   };
-
-  function log(message: string, ...args: any[]) {
-    console.log(`CrannAgent [${_myKey}] ` + message, ...args);
-  }
 
   const instance: ConnectReturn<TConfig> = [useCrann, get, set, subscribe];
   crannInstance = instance;
