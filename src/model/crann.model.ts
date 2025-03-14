@@ -58,7 +58,7 @@ type UseCrann<TConfig extends AnyConfig> = <
 ) => [
   DerivedState<TConfig>[K],
   (value: DerivedState<TConfig>[K]) => void,
-  (callback: (value: DerivedState<TConfig>[K]) => void) => () => void
+  (callback: (update: StateChangeUpdate<TConfig, K>) => void) => () => void
 ];
 
 type ConnectReturn<TConfig extends AnyConfig> = [
@@ -69,6 +69,15 @@ type ConnectReturn<TConfig extends AnyConfig> = [
   CrannAgent<TConfig>["getAgentInfo"],
   CrannAgent<TConfig>["onReady"]
 ];
+
+type StateChangeUpdate<
+  TConfig extends AnyConfig,
+  K extends keyof DerivedState<TConfig>
+> = {
+  current: DerivedState<TConfig>[K];
+  previous: DerivedState<TConfig>[K];
+  state: DerivedState<TConfig>;
+};
 
 type AgentSubscription<TConfig extends AnyConfig> = {
   (
@@ -103,4 +112,5 @@ export {
   ConnectReturn,
   UseCrann,
   ConnectionStatus,
+  StateChangeUpdate,
 };

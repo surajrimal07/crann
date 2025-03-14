@@ -7,6 +7,7 @@ import {
   ConnectReturn,
   UseCrann,
   ConnectionStatus,
+  StateChangeUpdate,
 } from "./model/crann.model";
 import {
   AgentInfo,
@@ -128,11 +129,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
     const setValue = (value: DerivedState<TConfig>[K]) =>
       set({ [key]: value } as Partial<DerivedState<TConfig>>);
     const subscribeToChanges = (
-      callback: (update: {
-        current: DerivedState<TConfig>[K];
-        previous: DerivedState<TConfig>[K];
-        state: DerivedState<TConfig>;
-      }) => void
+      callback: (update: StateChangeUpdate<TConfig, K>) => void
     ) => {
       let previousValue = getValue();
 
@@ -201,7 +198,7 @@ function getDerivedState<TConfig extends Record<string, ConfigItem<any>>>(
   const serviceState = {} as DerivedServiceState<TConfig>;
   Object.keys(config).forEach((key) => {
     const item: ConfigItem<any> = config[key];
-    if (item.partition === "instance") {
+    if (item.partition === "service") {
       serviceState[key as keyof DerivedServiceState<TConfig>] = item.default;
     }
   });
