@@ -7,7 +7,7 @@ import {
   Partition,
   CrannOptions,
 } from "./model/crann.model";
-import { AgentInfo, source, MessageTarget } from "porter-source";
+import { AgentInfo, source, MessageTarget, Agent } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
 import { Message, BrowserLocation } from "porter-source";
 import { trackStateChange } from "./utils/tracking";
@@ -290,6 +290,11 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
     return null;
   }
 
+  // Convenience re-export of the porter-source queryAgents method.
+  public queryAgents(query: Partial<BrowserLocation>): Agent[] {
+    return this.porter.queryAgents(query);
+  }
+
   public async set(state: Partial<DerivedServiceState<TConfig>>): Promise<void>;
   public async set(
     state: Partial<
@@ -402,18 +407,22 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   }
 }
 
-export function create<TConfig extends Record<string, ConfigItem<any>>>(
-  config: TConfig,
-  options?: CrannOptions
-): [
-  (key?: string) => DerivedState<TConfig>,
-  (
-    state: Partial<
-      DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>
-    >,
-    key?: string
-  ) => Promise<void>,
-  (
+// Define an interface for the API returned by create()
+export interface CrannAPI<TConfig extends Record<string, ConfigItem<any>>> {
+  get: {
+    (): DerivedState<TConfig>;
+    (key: string): DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>;
+  };
+  set: {
+    (state: Partial<DerivedServiceState<TConfig>>): Promise<void>;
+    (
+      state: Partial<
+        DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>
+      >,
+      key: string
+    ): Promise<void>;
+  };
+  subscribe: (
     listener: (
       state: DerivedInstanceState<TConfig> | DerivedState<TConfig>,
       changes: Partial<
@@ -421,14 +430,24 @@ export function create<TConfig extends Record<string, ConfigItem<any>>>(
       >,
       agent?: AgentInfo
     ) => void
-  ) => void,
-  (location: BrowserLocation) => string | null
-] {
+  ) => void;
+  findInstance: (location: BrowserLocation) => string | null;
+  queryAgents: (query: Partial<BrowserLocation>) => Agent[];
+  clear: () => Promise<void>;
+}
+
+export function create<TConfig extends Record<string, ConfigItem<any>>>(
+  config: TConfig,
+  options?: CrannOptions
+): CrannAPI<TConfig> {
   const instance = Crann.getInstance(config, options);
-  return [
-    instance.get.bind(instance),
-    instance.set.bind(instance),
-    instance.subscribe.bind(instance),
-    instance.findInstance.bind(instance),
-  ];
+
+  return {
+    get: instance.get.bind(instance),
+    set: instance.set.bind(instance),
+    subscribe: instance.subscribe.bind(instance),
+    findInstance: instance.findInstance.bind(instance),
+    queryAgents: instance.queryAgents.bind(instance),
+    clear: instance.clear.bind(instance),
+  };
 }
