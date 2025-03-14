@@ -17,8 +17,6 @@ type ConfigItem<T> = {
 
 type AnyConfig = Record<string, ConfigItem<any>>;
 
-// export type Config = typeof StateConfig;
-
 type DerivedState<T extends AnyConfig> = {
   [P in keyof T]: T[P]["default"];
 };
