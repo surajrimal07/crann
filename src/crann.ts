@@ -7,13 +7,7 @@ import {
   Partition,
   CrannOptions,
 } from "./model/crann.model";
-import {
-  AgentInfo,
-  source,
-  getAgentById,
-  getAgentByLocation,
-  MessageTarget,
-} from "porter-source";
+import { AgentInfo, source, MessageTarget } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
 import { Message, BrowserLocation } from "porter-source";
 import { trackStateChange } from "./utils/tracking";
@@ -38,6 +32,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private post: (message: Message<any>, target?: MessageTarget) => void =
     () => {};
   private debug: boolean = false;
+  private porter = source("crann");
 
   constructor(private config: TConfig, options?: CrannOptions) {
     // Set the debug flag globally
@@ -51,10 +46,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
     this.defaultServiceState = this.serviceState =
       this.initializeServiceDefault();
     this.hydrate();
-    const [post, setMessages, onConnect, onDisconnect, onMessagesSet] =
-      source("crann");
-    this.post = post;
-    setMessages({
+    this.porter.onMessage({
       setState: (message, info) => {
         if (!info) {
           this.log("setState message heard from unknown agent");
@@ -66,7 +58,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.set(message.payload.state, info.id);
       },
     });
-    onMessagesSet((info: AgentInfo) => {
+    this.porter.onMessagesSet((info: AgentInfo) => {
       this.instanceLog(
         "Messages set received. Sending initial state.",
         this.getAgentTag(info),
@@ -81,11 +73,11 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         info.location
       );
     });
-    onConnect((info: AgentInfo) => {
+    this.porter.onConnect((info: AgentInfo) => {
       const agentTag = this.getAgentTag(info);
       this.instanceLog("Agent connected ", agentTag, { info });
       this.addInstance(info.id);
-      onDisconnect((info: AgentInfo) => {
+      this.porter.onDisconnect((info: AgentInfo) => {
         this.instanceLog(
           "Agent disconnect heard. Connection type, context and location: ",
           this.getAgentTag(info),
@@ -241,7 +233,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   // Right now we notify the instance even if the state change came from the instance.
   // This should probably be skipped for instance state, since it already knows.
   private notify(changes: Partial<DerivedState<TConfig>>, key?: string): void {
-    const agent = key ? getAgentById(key) : undefined;
+    const agent = key ? this.porter.getAgentById(key) : undefined;
     const state = key ? this.get(key) : this.get();
 
     if (this.stateChangeListeners.length > 0) {
@@ -281,7 +273,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
 
   // Todo: Should we return the instance data? What is the point of this.
   public findInstance(location: BrowserLocation): string | null {
-    const agent = getAgentByLocation(location);
+    const agent = this.porter.getAgentByLocation(location);
     if (!agent) {
       this.log("Could not find agent for location: ", { location });
       return null;
