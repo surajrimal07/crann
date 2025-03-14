@@ -1,3 +1,5 @@
+import { AgentInfo } from "porter-source";
+
 export const Partition = {
   Instance: "instance" as const,
   Service: "service" as const,
@@ -45,6 +47,8 @@ type CrannAgent<TConfig extends AnyConfig> = {
     callback: (changes: StateUpdate<TConfig>) => void,
     keys?: Array<keyof TConfig>
   ) => () => void;
+  getAgentInfo: () => AgentInfo;
+  onReady: (callback: (info: ConnectionStatus) => void) => () => void;
 };
 
 type UseCrann<TConfig extends AnyConfig> = <
@@ -61,7 +65,9 @@ type ConnectReturn<TConfig extends AnyConfig> = [
   UseCrann<TConfig>,
   CrannAgent<TConfig>["get"],
   CrannAgent<TConfig>["set"],
-  CrannAgent<TConfig>["subscribe"]
+  CrannAgent<TConfig>["subscribe"],
+  CrannAgent<TConfig>["getAgentInfo"],
+  CrannAgent<TConfig>["onReady"]
 ];
 
 type AgentSubscription<TConfig extends AnyConfig> = {
@@ -78,6 +84,11 @@ export type CrannOptions = {
   storagePrefix?: string;
 };
 
+type ConnectionStatus = {
+  connected: boolean;
+  agent?: AgentInfo;
+};
+
 export {
   AnyConfig,
   ConfigItem,
@@ -91,4 +102,5 @@ export {
   DerivedState as State,
   ConnectReturn,
   UseCrann,
+  ConnectionStatus,
 };

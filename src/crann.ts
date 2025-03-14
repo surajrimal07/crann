@@ -73,7 +73,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
       this.post(
         {
           action: "initialState",
-          payload: { state: fullState, key: info.id },
+          payload: { state: fullState, info },
         },
         info.location
       );
