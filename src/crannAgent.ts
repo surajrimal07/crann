@@ -38,6 +38,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
     log("We had an instance already, returning");
 
     if (connectionStatus.connected) {
+      console.log("[Crann:Agent] connect, calling onReady callback");
       setTimeout(() => {
         readyCallbacks.forEach((callback) => callback(connectionStatus));
       }, 0);
@@ -50,6 +51,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
       instance[3],
       instance[4],
       (callback: (info: ConnectionStatus) => void) => {
+        console.log("[Crann:Agent] connect, adding onReady callback");
         readyCallbacks.add(callback);
         return () => readyCallbacks.delete(callback);
       },
@@ -157,6 +159,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   const onReady = (callback: (info: ConnectionStatus) => void) => {
     readyCallbacks.add(callback);
     if (connectionStatus.connected) {
+      console.log("[Crann:Agent], calling onReady callback");
       setTimeout(() => {
         callback(connectionStatus);
       }, 0);

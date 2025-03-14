@@ -23,13 +23,13 @@ export function trackStateChange(
       const callerMatch = lines[3]?.match(/at\s+(\S+)\s+/);
       const caller = callerMatch ? callerMatch[1] : "unknown";
 
-      const instanceKey = args.length > 1 ? args[1] : undefined;
+      const changes = args.length > 1 ? args[1] : undefined;
 
       const metadata: StateChangeMetadata = {
         source: caller,
         timestamp: Date.now(),
-        changes: args[0],
-        instanceKey,
+        instanceKey: args[0],
+        changes,
       };
 
       console.log(`Crann State Change:`, metadata);
