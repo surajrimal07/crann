@@ -406,7 +406,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
 
   public subscribeToInstanceReady(
     listener: (instanceId: string, agent: AgentInfo) => void
-  ): void {
+  ): () => void {
     this.log("Subscribing to instance ready events");
     this.instanceReadyListeners.push(listener);
 
@@ -416,6 +416,14 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         listener(instanceId, agent.info);
       }
     });
+
+    return () => {
+      this.log("Unsubscribing from instance ready events");
+      const index = this.instanceReadyListeners.indexOf(listener);
+      if (index !== -1) {
+        this.instanceReadyListeners.splice(index, 1);
+      }
+    };
   }
 
   private notifyInstanceReady(instanceId: string, info: AgentInfo): void {
@@ -471,7 +479,7 @@ export interface CrannAPI<TConfig extends Record<string, ConfigItem<any>>> {
   ) => void;
   onInstanceReady: (
     listener: (instanceId: string, agent: AgentInfo) => void
-  ) => void;
+  ) => () => void;
   findInstance: (location: BrowserLocation) => string | null;
   queryAgents: (query: Partial<BrowserLocation>) => Agent[];
   clear: () => Promise<void>;
