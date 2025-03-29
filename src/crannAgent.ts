@@ -60,11 +60,11 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   }
 
   log("No existing instance, creating a new one");
-  const [post, setMessages] = connectPorter({
+  const { post, onMessage } = connectPorter({
     namespace: "crann",
   });
 
-  setMessages({
+  onMessage({
     initialState: (message) => {
       _state = message.payload.state;
       _myInfo = message.payload.info;
