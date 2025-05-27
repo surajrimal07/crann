@@ -1,4 +1,4 @@
-import { source, AgentInfo, connect, Message } from "porter-source";
+import { source, AgentInfo, connect, Message, AgentAPI } from "porter-source";
 import { createEndpoint } from "./endpoint";
 import { MessageEndpoint, ActionsConfig } from "./types";
 
@@ -13,7 +13,7 @@ export function createCrannRPCAdapter<
   const porterInstance = porter || source("crann");
 
   // Determine if this is a service worker instance (source) or content script instance (connect)
-  const isServiceWorker = !("connect" in porterInstance);
+  const isServiceWorker = !(porterInstance.type === "agent");
 
   const messageEndpoint: MessageEndpoint = {
     postMessage: (message, transferables) => {
@@ -55,16 +55,20 @@ export function createCrannRPCAdapter<
       porterInstance.on({
         rpc: (message: Message<string>, info?: AgentInfo) => {
           try {
-            const payload = JSON.parse(message.payload);
+            console.log("[CRANN] porterInstance, message heard, ", {
+              message,
+              event,
+            });
+            const { payload } = message;
             const { message: originalMessage, transferables = [] } = payload;
-            const event = new MessageEvent("message", {
+            const rpcEvent = new MessageEvent("message", {
               data: originalMessage,
               ports:
                 (transferables.filter(
                   (t: unknown) => t instanceof MessagePort
                 ) as MessagePort[]) || [],
             });
-            listener(event);
+            listener(rpcEvent);
           } catch (e) {
             console.error("Failed to parse RPC message payload:", e);
           }

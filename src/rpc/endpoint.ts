@@ -6,8 +6,11 @@ import type {
   EncodingStrategy,
   EncodingStrategyApi,
   Retainer,
+  CallMessage,
+  ResultMessage,
+  ErrorMessage,
+  RPCMessage,
 } from "./types";
-import { StackFrame } from "./memory";
 
 const CALL = 0;
 const RESULT = 1;
@@ -17,13 +20,6 @@ const FUNCTION_APPLY = 5;
 const FUNCTION_RESULT = 6;
 
 type AnyFunction = (...args: any[]) => any;
-
-type MessageType = {
-  call: { id: string; args: unknown[] };
-  result: { id: string; result: unknown };
-  error: { id: string; error: string };
-  release: { id: string };
-};
 
 export interface CreateEndpointOptions<T = unknown> {
   uuid?(): string;
@@ -80,20 +76,19 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
   };
 
   messenger.addEventListener("message", (event) => {
-    const [id, message] = event.data as [
-      number,
-      MessageType[keyof MessageType]
-    ];
+    console.log("[CRANN] endpoint, message heard, ", event);
+    const [id, message] = event.data as [number, RPCMessage];
 
-    if ("call" in message && "args" in message) {
-      const callMessage = message as MessageType["call"];
+    if ("call" in message && "args" in message.call) {
+      console.log("[CRANN] call in message, and args in message", message);
+      const callMessage = message.call;
       const { id: callId, args } = callMessage;
       const action = actions[callId];
       if (!action) {
         messenger.postMessage([
           id,
-          { id: callId, error: "Action not found" },
-        ] as [number, MessageType["error"]]);
+          { error: { id: callId, error: "Action not found" } } as ErrorMessage,
+        ] as [number, ErrorMessage]);
         return;
       }
 
@@ -105,47 +100,49 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
         // Handle both synchronous and asynchronous results
         Promise.resolve(action.handler(state, setState, ...args)).then(
           (result: unknown) => {
-            messenger.postMessage([id, { id: callId, result }] as [
+            messenger.postMessage([id, { result: { id: callId, result } }] as [
               number,
-              MessageType["result"]
+              ResultMessage
             ]);
           },
           (error: Error) => {
             messenger.postMessage([
               id,
-              { id: callId, error: error.message },
-            ] as [number, MessageType["error"]]);
+              { error: { id: callId, error: error.message } } as ErrorMessage,
+            ] as [number, ErrorMessage]);
           }
         );
       } catch (error) {
         if (error instanceof Error) {
-          messenger.postMessage([id, { id: callId, error: error.message }] as [
-            number,
-            MessageType["error"]
-          ]);
+          messenger.postMessage([
+            id,
+            { error: { id: callId, error: error.message } },
+          ] as [number, ErrorMessage]);
         } else {
           messenger.postMessage([
             id,
-            { id: callId, error: "Unknown error occurred" },
-          ] as [number, MessageType["error"]]);
+            {
+              error: { id: callId, error: "Unknown error occurred" },
+            } as ErrorMessage,
+          ] as [number, ErrorMessage]);
         }
       }
     } else if ("result" in message) {
-      const resultMessage = message as MessageType["result"];
+      const resultMessage = message.result;
       const callback = callbacks.get(id);
       if (callback) {
         callback(resultMessage.result);
         callbacks.delete(id);
       }
     } else if ("error" in message) {
-      const errorMessage = message as MessageType["error"];
+      const errorMessage = message.error;
       const callback = callbacks.get(id);
       if (callback) {
         callback(Promise.reject(new Error(errorMessage.error)));
         callbacks.delete(id);
       }
     } else if ("release" in message) {
-      const releaseMessage = message as MessageType["release"];
+      const releaseMessage = message.release;
       const retainers = retainedObjects.get(releaseMessage.id);
       if (retainers) {
         retainers.clear();
@@ -166,9 +163,9 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
               resolve(result);
             }
           });
-          messenger.postMessage([id, { id: prop, args }] as [
+          messenger.postMessage([id, { call: { id: prop, args } }] as [
             number,
-            MessageType["call"]
+            CallMessage
           ]);
         });
       };

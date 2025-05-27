@@ -2,36 +2,36 @@ export type MessageMap = {
   call: {
     id: string;
     args: any[];
+    target?: any; // Missing target property
   };
   result: {
     id: string;
     result: any;
+    target?: any; // Missing target property
   };
   error: {
     id: string;
     error: string;
+    target?: any; // Missing target property
   };
   release: {
     id: string;
+    target?: any; // Missing target property
   };
 };
 
 export interface MessageEndpoint {
-  postMessage<T extends MessageMap[keyof MessageMap]>(
-    message: [number, T],
+  postMessage(
+    message: [number, RPCMessage],
     transferables?: Transferable[]
   ): void;
   addEventListener(
     event: "message",
-    listener: (
-      event: MessageEvent<[number, MessageMap[keyof MessageMap]]>
-    ) => void
+    listener: (event: MessageEvent<[number, RPCMessage]>) => void
   ): void;
   removeEventListener(
     event: "message",
-    listener: (
-      event: MessageEvent<[number, MessageMap[keyof MessageMap]]>
-    ) => void
+    listener: (event: MessageEvent<[number, RPCMessage]>) => void
   ): void;
   terminate?(): void;
 }
@@ -115,3 +115,37 @@ export type ActionDefinition<TState, TArgs extends any[], TResult> = {
 export type ActionsConfig<TState> = {
   [K: string]: ActionDefinition<TState, any[], Partial<TState>>;
 };
+
+export type CallMessage = {
+  call: {
+    id: string;
+    args: any[];
+    target?: any;
+  };
+};
+
+export type ResultMessage = {
+  result: {
+    id: string;
+    result: any;
+  };
+};
+
+export type ErrorMessage = {
+  error: {
+    id: string;
+    error: string;
+  };
+};
+
+export type ReleaseMessage = {
+  release: {
+    id: string;
+  };
+};
+
+export type RPCMessage =
+  | CallMessage
+  | ResultMessage
+  | ErrorMessage
+  | ReleaseMessage;
