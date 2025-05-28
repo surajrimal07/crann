@@ -13,10 +13,11 @@ import {
 } from "./model/crann.model";
 import { AgentInfo, source, MessageTarget, Agent } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
-import { Message, BrowserLocation } from "porter-source";
+import { BrowserLocation } from "porter-source";
 import { trackStateChange } from "./utils/tracking";
 import { DebugManager } from "./utils/debug";
 import { createCrannRPCAdapter } from "./rpc/adapter";
+import { Logger } from "./utils/logger";
 
 export class Crann<TConfig extends AnyConfig> {
   private static instance: Crann<any> | null = null;
@@ -45,9 +46,15 @@ export class Crann<TConfig extends AnyConfig> {
     // Set the debug flag globally
     if (options?.debug) {
       DebugManager.setDebug(true);
+      Logger.setDebug(true);
     }
     this.debug = options?.debug || false;
     this.storagePrefix = options?.storagePrefix ?? this.storagePrefix;
+
+    // Set up the core logger
+    const logger = Logger.forContext("Core");
+    logger.log("Constructing Crann with new logger");
+
     this.log("Constructing");
     this.defaultInstanceState = this.initializeInstanceDefault();
     this.defaultServiceState = this.serviceState =
@@ -77,7 +84,7 @@ export class Crann<TConfig extends AnyConfig> {
         return;
       }
 
-      console.log("[DEBUG] onMessagesSet received for agent:", {
+      this.log("onMessagesSet received for agent:", {
         id: info.id,
         context: info.location.context,
         tabId: info.location.tabId,
@@ -87,10 +94,7 @@ export class Crann<TConfig extends AnyConfig> {
 
       // Skip sending initialState if we've already sent it to this agent
       if (agentsInitialized.has(info.id)) {
-        console.log(
-          "[DEBUG] Already sent initialState to agent, skipping:",
-          info.id
-        );
+        this.log("Already sent initialState to agent, skipping:", info.id);
         return;
       }
 
@@ -297,7 +301,7 @@ export class Crann<TConfig extends AnyConfig> {
         agent.info.location
       );
     } else {
-      console.log("Notifying everyone");
+      this.log("Notifying everyone");
       // for every key of this.instances, post the state update to the corresponding key
       this.instances.forEach((_, key) => {
         this.porter.post(

@@ -116,7 +116,8 @@ onReady((status) => {
         console.log("incrementButton click");
         const result = await callAction("increment", 1);
         console.log("incrementButton click result", result);
-        ui.updateResult(`Increment counter to ${result}`);
+        ui.updateResult(`Incremented counter by 1`);
+        ui.updateCounter(result);
       } catch (error) {
         if (error instanceof Error) {
           ui.updateResult(`Error: ${error.message}`);

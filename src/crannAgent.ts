@@ -19,6 +19,7 @@ import {
   PorterContext,
 } from "porter-source";
 import { createCrannRPCAdapter } from "./rpc/adapter";
+import { Logger } from "./utils/logger";
 
 let connectionStatus: ConnectionStatus = { connected: false };
 let crannInstance: unknown = null;
@@ -29,6 +30,14 @@ export function connect<TConfig extends AnyConfig>(
 ): ConnectReturn<TConfig> {
   const debug = options?.debug || false;
   const context = options?.context;
+
+  // Set up logger
+  if (debug) {
+    Logger.setDebug(true);
+  }
+  const logger = Logger.forContext("Agent");
+  logger.log("Testing new logger in crannAgent");
+
   let _myInfo: AgentInfo;
   let _myTag = "unset";
   const log = (message: string, ...args: any[]) => {
@@ -106,6 +115,15 @@ export function connect<TConfig extends AnyConfig>(
       _myInfo = message.payload.info;
       _myTag = getAgentTag(_myInfo);
       connectionStatus = { connected: true, agent: _myInfo };
+
+      // Update logger with the agent tag once we have it
+      logger.setTag(_myTag);
+      logger.log(
+        `Initial state received and ${listeners.size} listeners notified`,
+        {
+          message,
+        }
+      );
 
       log(`Initial state received and  ${listeners.size} listeners notified`, {
         message,

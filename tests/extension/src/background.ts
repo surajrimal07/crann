@@ -39,7 +39,7 @@ setInterval(() => {
     context: PorterContext.ContentScript,
   });
   console.log("Active content scripts:", contentScripts);
-}, 5000);
+}, 60000);
 
 // Keep the service worker alive
 chrome.runtime.onConnect.addListener((port) => {
