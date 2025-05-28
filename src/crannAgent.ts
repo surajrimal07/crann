@@ -8,22 +8,36 @@ import {
   UseCrann,
   ConnectionStatus,
   StateChangeUpdate,
+  ActionDefinition,
+  AnyConfig,
+  isStateItem,
+  isActionItem,
 } from "./model/crann.model";
 import {
   AgentInfo,
   connect as connectPorter,
   PorterContext,
 } from "porter-source";
+import { createCrannRPCAdapter } from "./rpc/adapter";
+import { Logger } from "./utils/logger";
 
 let connectionStatus: ConnectionStatus = { connected: false };
 let crannInstance: unknown = null;
 
-export function connect<TConfig extends Record<string, ConfigItem<any>>>(
+export function connect<TConfig extends AnyConfig>(
   config: TConfig,
   options?: { context?: string; debug?: boolean }
 ): ConnectReturn<TConfig> {
   const debug = options?.debug || false;
   const context = options?.context;
+
+  // Set up logger
+  if (debug) {
+    Logger.setDebug(true);
+  }
+  const logger = Logger.forContext("Agent");
+  logger.log("Testing new logger in crannAgent");
+
   let _myInfo: AgentInfo;
   let _myTag = "unset";
   const log = (message: string, ...args: any[]) => {
@@ -44,37 +58,81 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
         readyCallbacks.forEach((callback) => callback(connectionStatus));
       }, 0);
     }
-    const instance = crannInstance as ConnectReturn<TConfig>;
-    return [
-      instance[0],
-      instance[1],
-      instance[2],
-      instance[3],
-      instance[4],
-      (callback: (info: ConnectionStatus) => void) => {
-        console.log("[Crann:Agent] connect, adding onReady callback");
-        readyCallbacks.add(callback);
-        return () => readyCallbacks.delete(callback);
-      },
-    ];
+    return crannInstance as ConnectReturn<TConfig>;
   }
 
   log("No existing instance, creating a new one");
-  const { post, onMessage } = connectPorter({
+  const porter = connectPorter({
     namespace: "crann",
   });
 
-  onMessage({
+  console.log("[DEBUG] Porter connection created");
+
+  // Initialize RPC with empty actions since this is the client side
+  const actions = Object.entries(config)
+    .filter(([_, value]) => isActionItem(value))
+    .reduce<
+      Record<string, ActionDefinition<DerivedState<TConfig>, any[], any>>
+    >((acc, [key, value]) => {
+      const action = value as ActionDefinition<
+        DerivedState<TConfig>,
+        any[],
+        any
+      >;
+      return {
+        ...acc,
+        [key]: {
+          type: "action",
+          handler: action.handler,
+          validate: action.validate,
+        },
+      };
+    }, {});
+
+  const rpcEndpoint = createCrannRPCAdapter(
+    getDerivedState(config),
+    actions,
+    porter
+  );
+
+  let initialStateReceived = false;
+
+  porter.on({
     initialState: (message) => {
+      console.log("[DEBUG] initialState received", {
+        alreadyReceived: initialStateReceived,
+        payload: message.payload,
+      });
+
+      if (initialStateReceived) {
+        console.log("[DEBUG] Ignoring duplicate initialState message");
+        return;
+      }
+
+      initialStateReceived = true;
+
       _state = message.payload.state;
       _myInfo = message.payload.info;
       _myTag = getAgentTag(_myInfo);
       connectionStatus = { connected: true, agent: _myInfo };
 
+      // Update logger with the agent tag once we have it
+      logger.setTag(_myTag);
+      logger.log(
+        `Initial state received and ${listeners.size} listeners notified`,
+        {
+          message,
+        }
+      );
+
       log(`Initial state received and  ${listeners.size} listeners notified`, {
         message,
       });
-      readyCallbacks.forEach((callback) => callback(connectionStatus));
+
+      readyCallbacks.forEach((callback) => {
+        console.log("Calling onReady callbacks");
+        callback(connectionStatus);
+      });
       listeners.forEach((listener) => {
         listener.callback(_state);
       });
@@ -91,7 +149,6 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
         } else {
           const matchFound = listener.keys.some((key) => key in changes!);
           if (matchFound) {
-            // log("Found a specific listener for this item, notifying");
             listener.callback(changes!);
           }
         }
@@ -108,7 +165,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   const get = () => _state;
   const set = (newState: Partial<DerivedState<TConfig>>) => {
     console.log("CrannAgent, calling post with setState");
-    post({ action: "setState", payload: { state: newState } });
+    porter.post({ action: "setState", payload: { state: newState } });
   };
 
   const subscribe = (
@@ -125,9 +182,17 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   const useCrann: UseCrann<TConfig> = <K extends keyof DerivedState<TConfig>>(
     key: K
   ) => {
-    const getValue = () => get()[key] as DerivedState<TConfig>;
-    const setValue = (value: DerivedState<TConfig>[K]) =>
-      set({ [key]: value } as Partial<DerivedState<TConfig>>);
+    const getValue = () => {
+      const value = get()[key];
+      return value as TConfig[K] extends ConfigItem<any>
+        ? TConfig[K]["default"]
+        : never;
+    };
+
+    const setValue = (
+      value: TConfig[K] extends ConfigItem<any> ? TConfig[K]["default"] : never
+    ) => set({ [key]: value } as Partial<DerivedState<TConfig>>);
+
     const subscribeToChanges = (
       callback: (update: StateChangeUpdate<TConfig, K>) => void
     ) => {
@@ -142,7 +207,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
               current: currentValue,
               previous: previousValue,
               state: fullState,
-            });
+            } as StateChangeUpdate<TConfig, K>);
             previousValue = currentValue;
           }
         },
@@ -154,6 +219,7 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
   };
 
   const onReady = (callback: (info: ConnectionStatus) => void) => {
+    console.log("[Crann:Agent], onReady callback added");
     readyCallbacks.add(callback);
     if (connectionStatus.connected) {
       console.log("[Crann:Agent], calling onReady callback");
@@ -166,14 +232,21 @@ export function connect<TConfig extends Record<string, ConfigItem<any>>>(
 
   const getAgentInfo = () => _myInfo;
 
-  const instance: ConnectReturn<TConfig> = [
+  const callAction = async (name: string, ...args: any[]) => {
+    console.log("MOC Calling action", name, args);
+    return (rpcEndpoint as any)[name](...args);
+  };
+
+  const instance = {
     useCrann,
     get,
     set,
     subscribe,
     getAgentInfo,
     onReady,
-  ];
+    callAction,
+  };
+
   crannInstance = instance;
 
   return crannInstance as ConnectReturn<TConfig>;
@@ -183,32 +256,19 @@ export function connected(): boolean {
   return crannInstance !== null;
 }
 
-function getDerivedState<TConfig extends Record<string, ConfigItem<any>>>(
+function getDerivedState<TConfig extends AnyConfig>(
   config: TConfig
 ): DerivedState<TConfig> {
-  const instanceState = {} as DerivedInstanceState<TConfig>;
-
+  const state: any = {};
   Object.keys(config).forEach((key) => {
-    const item: ConfigItem<any> = config[key];
-    if (item.partition === "instance") {
-      instanceState[key as keyof DerivedInstanceState<TConfig>] = item.default;
+    const item = config[key];
+    if (isStateItem(item)) {
+      state[key] = item.default;
     }
   });
-
-  const serviceState = {} as DerivedServiceState<TConfig>;
-  Object.keys(config).forEach((key) => {
-    const item: ConfigItem<any> = config[key];
-    if (item.partition === "service") {
-      serviceState[key as keyof DerivedServiceState<TConfig>] = item.default;
-    }
-  });
-
-  return {
-    ...instanceState,
-    ...serviceState,
-  } as unknown as DerivedState<TConfig>;
+  return state;
 }
 
-function getAgentTag(info: AgentInfo): string {
-  return `${info.location.context}:${info.location.tabId}:${info.location.frameId}`;
+function getAgentTag(agent: AgentInfo): string {
+  return `${agent.location.context}:${agent.location.tabId}:${agent.location.frameId}`;
 }

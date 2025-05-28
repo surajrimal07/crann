@@ -6,14 +6,20 @@ import {
   DerivedState,
   Partition,
   CrannOptions,
+  ActionDefinition,
+  AnyConfig,
+  isStateItem,
+  isActionItem,
 } from "./model/crann.model";
 import { AgentInfo, source, MessageTarget, Agent } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
-import { Message, BrowserLocation } from "porter-source";
+import { BrowserLocation } from "porter-source";
 import { trackStateChange } from "./utils/tracking";
 import { DebugManager } from "./utils/debug";
+import { createCrannRPCAdapter } from "./rpc/adapter";
+import { Logger } from "./utils/logger";
 
-export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
+export class Crann<TConfig extends AnyConfig> {
   private static instance: Crann<any> | null = null;
   private instances: Map<string, DerivedInstanceState<TConfig>> = new Map();
   private defaultServiceState: DerivedServiceState<TConfig>;
@@ -34,20 +40,29 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private storagePrefix = "crann_";
   private debug: boolean = false;
   private porter = source("crann");
+  private rpcEndpoint: ReturnType<typeof createCrannRPCAdapter>;
 
   constructor(private config: TConfig, options?: CrannOptions) {
     // Set the debug flag globally
     if (options?.debug) {
       DebugManager.setDebug(true);
+      Logger.setDebug(true);
     }
     this.debug = options?.debug || false;
     this.storagePrefix = options?.storagePrefix ?? this.storagePrefix;
+
+    // Set up the core logger
+    const logger = Logger.forContext("Core");
+    logger.log("Constructing Crann with new logger");
+
     this.log("Constructing");
     this.defaultInstanceState = this.initializeInstanceDefault();
     this.defaultServiceState = this.serviceState =
       this.initializeServiceDefault();
     this.hydrate();
-    this.porter.onMessage({
+
+    this.log("Crann constructed, setting initial message handlers");
+    this.porter.on({
       setState: (message, info) => {
         if (!info) {
           this.log("setState message heard from unknown agent");
@@ -59,11 +74,31 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.set(message.payload.state, info.id);
       },
     });
+
+    // Track which agents we've already sent initialState to
+    const agentsInitialized = new Set<string>();
+
     this.porter.onMessagesSet((info: AgentInfo) => {
       if (!info) {
         this.error("Messages set but no agent info.", { info });
         return;
       }
+
+      this.log("onMessagesSet received for agent:", {
+        id: info.id,
+        context: info.location.context,
+        tabId: info.location.tabId,
+        frameId: info.location.frameId,
+        alreadyInitialized: agentsInitialized.has(info.id),
+      });
+
+      // Skip sending initialState if we've already sent it to this agent
+      if (agentsInitialized.has(info.id)) {
+        this.log("Already sent initialState to agent, skipping:", info.id);
+        return;
+      }
+
+      agentsInitialized.add(info.id);
 
       this.instanceLog(
         "Messages set received. Sending initial state.",
@@ -98,9 +133,13 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         this.removeInstance(info.id);
       });
     });
+
+    // Initialize RPC with actions
+    const actions = this.extractActions(config);
+    this.rpcEndpoint = createCrannRPCAdapter(this.get(), actions, this.porter);
   }
 
-  public static getInstance<TConfig extends Record<string, ConfigItem<any>>>(
+  public static getInstance<TConfig extends AnyConfig>(
     config: TConfig,
     options?: CrannOptions
   ): Crann<TConfig> {
@@ -262,7 +301,7 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
         agent.info.location
       );
     } else {
-      console.log("Notifying everyone");
+      this.log("Notifying everyone");
       // for every key of this.instances, post the state update to the corresponding key
       this.instances.forEach((_, key) => {
         this.porter.post(
@@ -312,32 +351,32 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
 
   public async set(state: Partial<DerivedServiceState<TConfig>>): Promise<void>;
   public async set(
-    state: Partial<
-      DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>
-    >,
+    state: Partial<DerivedInstanceState<TConfig>>,
     key: string
   ): Promise<void>;
   public async set(
-    state: Partial<
-      DerivedInstanceState<TConfig> | DerivedServiceState<TConfig>
-    >,
+    state: Partial<DerivedState<TConfig>>,
     key?: string
   ): Promise<void> {
     const instance = {} as Partial<DerivedInstanceState<TConfig>>;
     const worker = {} as Partial<DerivedServiceState<TConfig>>;
 
     for (const itemKey in state) {
-      const item = this.config[itemKey as keyof TConfig] as ConfigItem<any>;
-      if (item.partition === "instance") {
-        const instanceItemKey = itemKey as keyof DerivedInstanceState<TConfig>;
-        const instanceState = state as Partial<DerivedInstanceState<TConfig>>;
-        instance[instanceItemKey] = instanceState[instanceItemKey];
-      } else if (!item.partition || item.partition === Partition.Service) {
-        const serviceItemKey = itemKey as keyof DerivedServiceState<TConfig>;
-        const serviceState = state as Partial<DerivedServiceState<TConfig>>;
-        worker[serviceItemKey] = serviceState[serviceItemKey]!;
+      const item = this.config[itemKey as keyof TConfig];
+      if (isConfigItem(item)) {
+        if (item.partition === "instance") {
+          const instanceItemKey =
+            itemKey as keyof DerivedInstanceState<TConfig>;
+          const instanceState = state as Partial<DerivedInstanceState<TConfig>>;
+          instance[instanceItemKey] = instanceState[instanceItemKey];
+        } else if (!item.partition || item.partition === Partition.Service) {
+          const serviceItemKey = itemKey as keyof DerivedServiceState<TConfig>;
+          const serviceState = state as Partial<DerivedServiceState<TConfig>>;
+          worker[serviceItemKey] = serviceState[serviceItemKey]!;
+        }
       }
     }
+
     if (key && Object.keys(instance).length > 0) {
       this.instanceLog("Setting instance state: ", key, instance);
       this.setInstanceState(key, instance);
@@ -385,8 +424,8 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private initializeInstanceDefault(): DerivedInstanceState<TConfig> {
     const instanceState: any = {};
     Object.keys(this.config).forEach((key) => {
-      const item: ConfigItem<any> = this.config[key];
-      if (item.partition === "instance") {
+      const item = this.config[key];
+      if (isStateItem(item) && item.partition === "instance") {
         instanceState[key] = item.default;
       }
     });
@@ -396,8 +435,11 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private initializeServiceDefault(): DerivedServiceState<TConfig> {
     const serviceState: any = {};
     Object.keys(this.config).forEach((key) => {
-      const item: ConfigItem<any> = this.config[key];
-      if (item.partition === Partition.Service) {
+      const item = this.config[key];
+      if (
+        isStateItem(item) &&
+        (!item.partition || item.partition === Partition.Service)
+      ) {
         serviceState[key] = item.default;
       }
     });
@@ -451,10 +493,42 @@ export class Crann<TConfig extends Record<string, ConfigItem<any>>> {
   private warn(message: string, ...args: any[]) {
     console.warn(`CrannSource [core], ` + message, ...args);
   }
+
+  private extractActions(
+    config: TConfig
+  ): Record<string, ActionDefinition<DerivedState<TConfig>, any[], any>> {
+    return Object.entries(config)
+      .filter(([_, value]) => isActionItem(value))
+      .reduce<
+        Record<string, ActionDefinition<DerivedState<TConfig>, any[], any>>
+      >((acc, [key, value]) => {
+        const action = value as ActionDefinition<
+          DerivedState<TConfig>,
+          any[],
+          any
+        >;
+        return {
+          ...acc,
+          [key]: {
+            handler: async (state: DerivedState<TConfig>, ...args: any[]) => {
+              if (action.validate) {
+                action.validate(...args);
+              }
+              const result = await action.handler(state, ...args);
+              if (result) {
+                await this.set(result);
+              }
+              return result;
+            },
+            validate: action.validate,
+          },
+        };
+      }, {});
+  }
 }
 
 // Define an interface for the API returned by create()
-export interface CrannAPI<TConfig extends Record<string, ConfigItem<any>>> {
+export interface CrannAPI<TConfig extends AnyConfig> {
   get: {
     (): DerivedState<TConfig>;
     (key: string): DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>;
@@ -485,7 +559,7 @@ export interface CrannAPI<TConfig extends Record<string, ConfigItem<any>>> {
   clear: () => Promise<void>;
 }
 
-export function create<TConfig extends Record<string, ConfigItem<any>>>(
+export function create<TConfig extends AnyConfig>(
   config: TConfig,
   options?: CrannOptions
 ): CrannAPI<TConfig> {
@@ -500,4 +574,8 @@ export function create<TConfig extends Record<string, ConfigItem<any>>>(
     queryAgents: instance.queryAgents.bind(instance),
     clear: instance.clear.bind(instance),
   };
+}
+
+function isConfigItem(item: any): item is ConfigItem<any> {
+  return item && typeof item === "object" && "default" in item;
 }

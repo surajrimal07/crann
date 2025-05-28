@@ -11,28 +11,85 @@ export const Persistence = {
   None: "none" as const,
 };
 
-type ConfigItem<T> = {
+export type ActionHandler<TState, TArgs extends any[], TResult> = (
+  state: TState,
+  ...args: TArgs
+) => Promise<TResult>;
+
+export type ActionDefinition<TState, TArgs extends any[], TResult> = {
+  handler: (state: TState, ...args: TArgs) => Promise<TResult>;
+  validate?: (...args: TArgs) => void;
+};
+
+export type ActionsConfig<TState> = {
+  [K: string]: ActionDefinition<TState, any[], Partial<TState>>;
+};
+
+// Input types (what users provide in their config)
+export type ConfigItem<T> = {
   default: T;
   partition?: (typeof Partition)[keyof typeof Partition];
   persist?: (typeof Persistence)[keyof typeof Persistence];
 };
 
-type AnyConfig = Record<string, ConfigItem<any>>;
-
-type DerivedState<T extends AnyConfig> = {
-  [P in keyof T]: T[P]["default"];
+// Internal types (with required type fields)
+type InternalConfigItem<T> = ConfigItem<T> & {
+  type: "state";
 };
 
-type DerivedInstanceState<T extends AnyConfig> = {
-  [P in keyof T as T[P]["partition"] extends "instance"
-    ? P
-    : never]: T[P]["default"];
+type InternalActionDefinition<
+  TState,
+  TArgs extends any[],
+  TResult
+> = ActionDefinition<TState, TArgs, TResult> & {
+  type: "action";
 };
 
-type DerivedServiceState<T extends AnyConfig> = {
-  [P in keyof T as T[P]["partition"] extends "service"
-    ? P
-    : never]: T[P]["default"];
+export type AnyConfig = Record<
+  string,
+  ConfigItem<any> | ActionDefinition<any, any[], any>
+>;
+
+// Helper type to extract just the state items from a config
+export type StateConfig<T extends AnyConfig> = {
+  [P in keyof T]: T[P] extends ConfigItem<any> ? T[P] : never;
+};
+
+// Helper type to extract just the action items from a config
+export type ActionConfig<T extends AnyConfig> = {
+  [P in keyof T]: T[P] extends ActionDefinition<any, any[], any> ? T[P] : never;
+};
+
+// Update DerivedState to use the internal types
+export type DerivedState<T extends AnyConfig> = {
+  [P in keyof T]: T[P] extends ConfigItem<any> ? T[P]["default"] : never;
+};
+
+// Update DerivedInstanceState to use the internal types
+export type DerivedInstanceState<T extends AnyConfig> = {
+  [P in keyof T]: T[P] extends ConfigItem<any> & { partition: "instance" }
+    ? T[P]["default"]
+    : never;
+};
+
+// Update DerivedServiceState to use the internal types
+export type DerivedServiceState<T extends AnyConfig> = {
+  [P in keyof T]: T[P] extends ConfigItem<any> & { partition: "service" }
+    ? T[P]["default"]
+    : never;
+};
+
+// Type guards
+export const isStateItem = <T>(
+  item: ConfigItem<T> | ActionDefinition<any, any[], any>
+): item is ConfigItem<T> => {
+  return !("handler" in item);
+};
+
+export const isActionItem = <TState, TArgs extends any[], TResult>(
+  item: ConfigItem<any> | ActionDefinition<TState, TArgs, TResult>
+): item is ActionDefinition<TState, TArgs, TResult> => {
+  return "handler" in item;
 };
 
 type StateSubscriber<TConfig extends AnyConfig> = {
@@ -61,14 +118,15 @@ type UseCrann<TConfig extends AnyConfig> = <
   (callback: (update: StateChangeUpdate<TConfig, K>) => void) => () => void
 ];
 
-type ConnectReturn<TConfig extends AnyConfig> = [
-  UseCrann<TConfig>,
-  CrannAgent<TConfig>["get"],
-  CrannAgent<TConfig>["set"],
-  CrannAgent<TConfig>["subscribe"],
-  CrannAgent<TConfig>["getAgentInfo"],
-  CrannAgent<TConfig>["onReady"]
-];
+type ConnectReturn<TConfig extends AnyConfig> = {
+  useCrann: UseCrann<TConfig>;
+  get: CrannAgent<TConfig>["get"];
+  set: CrannAgent<TConfig>["set"];
+  subscribe: CrannAgent<TConfig>["subscribe"];
+  getAgentInfo: CrannAgent<TConfig>["getAgentInfo"];
+  onReady: CrannAgent<TConfig>["onReady"];
+  callAction: (name: string, ...args: any[]) => Promise<any>;
+};
 
 type StateChangeUpdate<
   TConfig extends AnyConfig,
@@ -98,12 +156,11 @@ type ConnectionStatus = {
   agent?: AgentInfo;
 };
 
+export type CrannConfig<TState> = {
+  [K: string]: ConfigItem<any> | ActionsConfig<TState>;
+};
+
 export {
-  AnyConfig,
-  ConfigItem,
-  DerivedState,
-  DerivedInstanceState,
-  DerivedServiceState,
   StateSubscriber,
   CrannAgent,
   AgentSubscription,

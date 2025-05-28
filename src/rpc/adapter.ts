@@ -1,0 +1,117 @@
+import { source, AgentInfo, connect, Message, AgentAPI } from "porter-source";
+import { createEndpoint } from "./endpoint";
+import {
+  MessageEndpoint,
+  ActionsConfig,
+  CallMessage,
+  RPCMessage,
+} from "./types";
+
+export function createCrannRPCAdapter<
+  TState,
+  TActions extends ActionsConfig<TState>
+>(
+  initialState: TState,
+  actions: TActions,
+  porter?: ReturnType<typeof source> | ReturnType<typeof connect>
+) {
+  const porterInstance = porter || source("crann");
+
+  // Determine if this is a service worker instance (source) or content script instance (connect)
+  const isServiceWorker = !(porterInstance.type === "agent");
+
+  const messageEndpoint: MessageEndpoint = {
+    postMessage: (message, transferables) => {
+      if (isServiceWorker) {
+        console.log(
+          "MOC createCrannRPCAdapter, postMessage, isServiceWorker: ",
+          { porterInstance, message, transferables }
+        );
+        // In service worker, we need to respond to the specific target
+        const [, rpcPayload] = message;
+        const target = getTargetFromMessage(rpcPayload);
+        if (!target) {
+          console.warn(
+            "No target specified for RPC response in service worker"
+          );
+          return;
+        }
+        porterInstance.post(
+          {
+            action: "rpc",
+            payload: {
+              message,
+              transferables: transferables || [],
+            },
+          },
+          target
+        );
+      } else {
+        // In content script (agent) context
+        // Get the agent info only when needed
+        const agentInfo = (porterInstance as AgentAPI).getAgentInfo();
+
+        // Destructure the tuple, skipping the messageId which we don't need
+        const [, rpcPayload] = message;
+
+        // Use type guard to check if it's a call message
+        if ("call" in rpcPayload) {
+          // Add the target info to the call message
+          rpcPayload.call.target = agentInfo?.location;
+        }
+
+        console.log("Crann[CS]: did we add target to call message? ", {
+          rpcPayload,
+          message,
+        });
+        // In content script, target is automatically the service worker
+        porterInstance.post({
+          action: "rpc",
+          payload: {
+            message,
+            transferables: transferables || [],
+          },
+        });
+      }
+    },
+    addEventListener: (event, listener) => {
+      porterInstance.on({
+        rpc: (message: Message<string>, info?: AgentInfo) => {
+          try {
+            console.log("[CRANN] porterInstance, message heard, ", {
+              message,
+              event,
+            });
+            const { payload } = message;
+            const { message: originalMessage, transferables = [] } = payload;
+            const rpcEvent = new MessageEvent("message", {
+              data: originalMessage,
+              ports:
+                (transferables.filter(
+                  (t: unknown) => t instanceof MessagePort
+                ) as MessagePort[]) || [],
+            });
+            listener(rpcEvent);
+          } catch (e) {
+            console.error("Failed to parse RPC message payload:", e);
+          }
+        },
+      });
+    },
+    removeEventListener: () => {
+      // Porter-source doesn't support removing listeners
+    },
+  };
+
+  return createEndpoint(messageEndpoint, initialState, actions);
+}
+
+// Don't love this being here. Let's move it sometime soon,
+// or find another way to do this.
+function getTargetFromMessage(payload: RPCMessage): any {
+  if ("result" in payload) return payload.result.target;
+  if ("error" in payload) return payload.error.target;
+  if ("call" in payload) return payload.call.target;
+  if ("release" in payload) return payload.release.target;
+  return undefined;
+}

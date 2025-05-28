@@ -14,6 +14,7 @@ Crann: Effortless State Synchronization for Web Extensions
   - [Partitioned State](#understanding-partitioned-state)
   - [Persistence](#state-persistence-options)
   - [Advanced API](#advanced-api-functions)
+  - [Remote Procedure Calls (RPC Actions)](#remote-procedure-calls-rpc-actions)
   - [React Integration](#react-integration)
 - [What Was The Problem?](#what-was-the-problem)
 - [Why Is This Better?](#why-is-this-better-how-crann-simplifies-synchronization)
@@ -247,49 +248,136 @@ Remember: Persisted state is always shared state (not partitioned).
 
 ### Advanced API Functions
 
-Crann provides additional functions for monitoring and managing instance connections:
+The `create` function returns an object with the following methods:
 
 ```typescript
-// In the service worker
 const crann = create({
-  // ... state configuration
+  // ... state config ...
 });
 
-// Listen for new instance connections
-crann.onInstanceConnect((instanceKey) => {
-  console.log(`New instance connected: ${instanceKey}`);
-  // You can access this instance's partitioned state
-  const instanceState = crann.get(instanceKey);
+// Get state
+const state = crann.get(); // Get all state
+const instanceState = crann.get("instanceKey"); // Get state for specific instance
+
+// Set state
+await crann.set({ key: "value" }); // Set service state
+await crann.set({ key: "value" }, "instanceKey"); // Set instance state
+
+// Subscribe to state changes
+crann.subscribe((state, changes, agent) => {
+  // state: The complete state
+  // changes: Only the changed values
+  // agent: Info about which context made the change
 });
 
-// Listen for instance disconnections
-crann.onInstanceDisconnect((instanceKey) => {
-  console.log(`Instance disconnected: ${instanceKey}`);
-  // Clean up any resources associated with this instance
+// Subscribe to instance ready events
+const unsubscribe = crann.onInstanceReady((instanceId, agent) => {
+  // Called when a new instance connects
+  // Returned function can be called to unsubscribe
 });
 
-// Get a list of all currently connected instances
-const connectedInstances = crann.getConnectedInstances();
-console.log("Connected instances:", connectedInstances);
+// Find an instance by location
+const instanceId = crann.findInstance({
+  context: "content-script",
+  tabId: 123,
+  frameId: 0,
+});
 
-// In any context (including service worker)
-const { getInstanceKey } = connect();
-// Get this context's unique instance key
-const myInstanceKey = getInstanceKey();
+// Query agents by location
+const agents = crann.queryAgents({
+  context: "content-script",
+});
+
+// Clear all state
+await crann.clear();
 ```
 
-These functions are particularly useful for:
+### Remote Procedure Calls (RPC Actions)
 
-- Tracking which content scripts are currently active
-- Cleaning up resources when instances disconnect
-- Debugging connection issues
-- Managing instance-specific resources in the service worker
+Crann now supports RPC-style actions that execute in the service worker context while being callable from any extension context. This is perfect for operations that need to run in the service worker, like making network requests or accessing extension APIs.
 
-The `getInstanceKey()` function is available in all contexts and can be useful for:
+#### Defining Actions in the Service Worker
 
-- Logging and debugging
-- Coordinating with other systems that need to identify specific instances
-- Managing instance-specific resources
+Actions are defined in your config alongside regular state items. The key difference is that actions have a `handler` property:
+
+```typescript
+// service-worker.ts
+import { create } from "crann";
+
+const crann = create({
+  // Regular state
+  counter: {
+    default: 0,
+    partition: "service",
+    persist: "local",
+  },
+
+  // RPC action
+  increment: {
+    handler: async (state, amount: number) => {
+      // This runs in the service worker
+      return { counter: state.counter + amount };
+    },
+    validate: (amount: number) => {
+      if (amount < 0) throw new Error("Amount must be positive");
+    },
+  },
+
+  // Another action example
+  fetchData: {
+    handler: async (state, url: string) => {
+      // This runs in the service worker where we can make network requests
+      const response = await fetch(url);
+      const data = await response.json();
+      return { data };
+    },
+    validate: (url: string) => {
+      if (!url.startsWith("https://")) {
+        throw new Error("URL must be HTTPS");
+      }
+    },
+  },
+});
+```
+
+#### Using Actions in Other Contexts
+
+Actions can be called from any context that connects to Crann:
+
+```typescript
+// content-script.ts
+import { connect } from "crann";
+
+const [useCrann, get, set, subscribe, getAgentInfo, onReady, callAction] =
+  connect(config);
+
+// Wait for connection
+onReady((status) => {
+  if (status.connected) {
+    // Call the increment action
+    callAction("increment", 1).then((result) => {
+      console.log("Counter incremented:", result);
+    });
+
+    // Call the fetchData action
+    callAction("fetchData", "https://api.example.com/data")
+      .then((result) => {
+        console.log("Fetched data:", result.data);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch data:", error);
+      });
+  }
+});
+```
+
+#### Key Benefits of RPC Actions
+
+1. **Type Safety**: Full TypeScript support for action parameters and return values
+2. **Validation**: Optional validation of action parameters before execution
+3. **Service Worker Context**: Actions run in the service worker where they have access to all extension APIs
+4. **Automatic State Updates**: Actions can return state updates that are automatically synchronized
+5. **Error Handling**: Proper error propagation from service worker to calling context
 
 ### React Integration
 
@@ -444,7 +532,6 @@ function OptimizedComponent() {
 }
 ```
 
-
 ## What Was The Problem?
 
 Browser extensions often have multiple components:
@@ -473,4 +560,3 @@ This dramatically simplifies your architecture:
 - **No more manual messaging:** Crann handles the communication internally.
 - **Single source of truth:** State is managed centrally.
 - **Reactivity:** Components automatically react to state changes they care about.
-
