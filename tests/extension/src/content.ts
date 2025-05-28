@@ -15,6 +15,7 @@ function createTestUI() {
 
   const counterDisplay = document.createElement("div");
   counterDisplay.id = "counter-display";
+  counterDisplay.style.color = "black";
   counterDisplay.textContent = "Counter: 0";
   container.appendChild(counterDisplay);
 
@@ -37,6 +38,7 @@ function createTestUI() {
   const resultDisplay = document.createElement("div");
   resultDisplay.id = "result-display";
   resultDisplay.style.marginTop = "10px";
+  resultDisplay.style.color = "black";
   container.appendChild(resultDisplay);
 
   document.body.appendChild(container);
@@ -77,7 +79,8 @@ onReady((status) => {
       try {
         console.log("incrementButton click");
         const result = await callAction("increment", 1);
-        ui.updateResult(`Increment counter to ${result.timesUsed}`);
+        console.log("incrementButton click result", result);
+        ui.updateResult(`Increment counter to ${result}`);
       } catch (error) {
         if (error instanceof Error) {
           ui.updateResult(`Error: ${error.message}`);

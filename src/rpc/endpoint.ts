@@ -82,12 +82,14 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
     if ("call" in message && "args" in message.call) {
       console.log("[CRANN] call in message, and args in message", message);
       const callMessage = message.call;
-      const { id: callId, args } = callMessage;
+      const { id: callId, args, target } = callMessage;
       const action = actions[callId];
       if (!action) {
         messenger.postMessage([
           id,
-          { error: { id: callId, error: "Action not found" } } as ErrorMessage,
+          {
+            error: { id: callId, error: "Action not found", target },
+          } as ErrorMessage,
         ] as [number, ErrorMessage]);
         return;
       }
@@ -100,15 +102,21 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
         // Handle both synchronous and asynchronous results
         Promise.resolve(action.handler(state, setState, ...args)).then(
           (result: unknown) => {
-            messenger.postMessage([id, { result: { id: callId, result } }] as [
-              number,
-              ResultMessage
-            ]);
+            console.log("[CRANN] Result from action handler, with target: ", {
+              result,
+              target,
+            });
+            messenger.postMessage([
+              id,
+              { result: { id: callId, result, target } },
+            ] as [number, ResultMessage]);
           },
           (error: Error) => {
             messenger.postMessage([
               id,
-              { error: { id: callId, error: error.message } } as ErrorMessage,
+              {
+                error: { id: callId, error: error.message, target },
+              } as ErrorMessage,
             ] as [number, ErrorMessage]);
           }
         );
@@ -116,13 +124,13 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
         if (error instanceof Error) {
           messenger.postMessage([
             id,
-            { error: { id: callId, error: error.message } },
+            { error: { id: callId, error: error.message, target } },
           ] as [number, ErrorMessage]);
         } else {
           messenger.postMessage([
             id,
             {
-              error: { id: callId, error: "Unknown error occurred" },
+              error: { id: callId, error: "Unknown error occurred", target },
             } as ErrorMessage,
           ] as [number, ErrorMessage]);
         }

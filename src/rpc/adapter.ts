@@ -1,6 +1,11 @@
 import { source, AgentInfo, connect, Message, AgentAPI } from "porter-source";
 import { createEndpoint } from "./endpoint";
-import { MessageEndpoint, ActionsConfig } from "./types";
+import {
+  MessageEndpoint,
+  ActionsConfig,
+  CallMessage,
+  RPCMessage,
+} from "./types";
 
 export function createCrannRPCAdapter<
   TState,
@@ -23,7 +28,8 @@ export function createCrannRPCAdapter<
           { porterInstance, message, transferables }
         );
         // In service worker, we need to respond to the specific target
-        const target = (message as any).target;
+        const [, rpcPayload] = message;
+        const target = getTargetFromMessage(rpcPayload);
         if (!target) {
           console.warn(
             "No target specified for RPC response in service worker"
@@ -41,6 +47,23 @@ export function createCrannRPCAdapter<
           target
         );
       } else {
+        // In content script (agent) context
+        // Get the agent info only when needed
+        const agentInfo = (porterInstance as AgentAPI).getAgentInfo();
+
+        // Destructure the tuple, skipping the messageId which we don't need
+        const [, rpcPayload] = message;
+
+        // Use type guard to check if it's a call message
+        if ("call" in rpcPayload) {
+          // Add the target info to the call message
+          rpcPayload.call.target = agentInfo?.location;
+        }
+
+        console.log("Crann[CS]: did we add target to call message? ", {
+          rpcPayload,
+          message,
+        });
         // In content script, target is automatically the service worker
         porterInstance.post({
           action: "rpc",
@@ -81,4 +104,14 @@ export function createCrannRPCAdapter<
   };
 
   return createEndpoint(messageEndpoint, initialState, actions);
+}
+
+// Don't love this being here. Let's move it sometime soon,
+// or find another way to do this.
+function getTargetFromMessage(payload: RPCMessage): any {
+  if ("result" in payload) return payload.result.target;
+  if ("error" in payload) return payload.error.target;
+  if ("call" in payload) return payload.call.target;
+  if ("release" in payload) return payload.release.target;
+  return undefined;
 }

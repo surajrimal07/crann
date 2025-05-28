@@ -128,6 +128,7 @@ export type ResultMessage = {
   result: {
     id: string;
     result: any;
+    target?: any;
   };
 };
 
@@ -135,12 +136,14 @@ export type ErrorMessage = {
   error: {
     id: string;
     error: string;
+    target?: any;
   };
 };
 
 export type ReleaseMessage = {
   release: {
     id: string;
+    target?: any;
   };
 };
 
