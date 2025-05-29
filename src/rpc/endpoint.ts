@@ -12,6 +12,7 @@ import type {
   RPCMessage,
 } from "./types";
 import { Logger } from "../utils/logger";
+import { getAgentTag } from "../utils/agent";
 
 const CALL = 0;
 const RESULT = 1;
@@ -69,7 +70,13 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
   const retainedObjects = new Map<string, Set<Retainer>>();
 
   // Create logger - will be used in Service Worker or Agent context based on the messenger's context
-  const logger = Logger.forContext("RPC:Endpoint");
+  const contextPrefix = messenger.context?.isServiceWorker ? "Core" : "Agent";
+  const logger = Logger.forContext(`${contextPrefix}:RPC`);
+
+  // If we have agent info, set the tag
+  if (messenger.context?.agentInfo) {
+    logger.setTag(getAgentTag(messenger.context.agentInfo));
+  }
 
   // State update function that will be passed to action handlers
   const setState = async (newState: Partial<TState>) => {

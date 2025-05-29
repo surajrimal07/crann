@@ -122,6 +122,13 @@ export function createCrannRPCAdapter<
     removeEventListener: () => {
       // Porter-source doesn't support removing listeners
     },
+    // Add context information
+    context: {
+      isServiceWorker,
+      agentInfo: !isServiceWorker
+        ? (porterInstance as AgentAPI).getAgentInfo()
+        : undefined,
+    },
   };
 
   return createEndpoint(messageEndpoint, initialState, actions);

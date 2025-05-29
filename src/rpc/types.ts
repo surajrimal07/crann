@@ -34,6 +34,10 @@ export interface MessageEndpoint {
     listener: (event: MessageEvent<[number, RPCMessage]>) => void
   ): void;
   terminate?(): void;
+  context?: {
+    isServiceWorker: boolean;
+    agentInfo?: any; // Using any here as we'll import the proper type in the implementation
+  };
 }
 
 export type RemoteCallable<T> = { [K in keyof T]: RemoteCallableField<T[K]> };
