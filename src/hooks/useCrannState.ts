@@ -6,7 +6,7 @@ export function createCrannStateHook<
   TConfig extends Record<string, ConfigItem<any>>
 >(config: TConfig) {
   return function useCrannState(context?: string) {
-    const { useCrann, get, set, subscribe } = useMemo(() => {
+    const { useCrann, get, set, subscribe, callAction } = useMemo(() => {
       const instance = connect(config);
       return instance;
     }, [context]);
@@ -61,6 +61,7 @@ export function createCrannStateHook<
       getState,
       setState,
       useCrann,
+      callAction,
     };
   };
 }

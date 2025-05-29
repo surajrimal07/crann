@@ -294,7 +294,7 @@ await crann.clear();
 
 ### Remote Procedure Calls (RPC Actions)
 
-Crann now supports RPC-style actions that execute in the service worker context while being callable from any extension context. This is perfect for operations that need to run in the service worker, like making network requests or accessing extension APIs.
+Crann supports RPC-style actions that execute in the service worker context while being callable from any extension context. This is perfect for operations that need to run in the service worker, like making network requests or accessing extension APIs.
 
 #### Defining Actions in the Service Worker
 
@@ -308,7 +308,6 @@ const crann = create({
   // Regular state
   counter: {
     default: 0,
-    partition: "service",
     persist: "local",
   },
 
@@ -337,38 +336,173 @@ const crann = create({
       }
     },
   },
+
+  // Action that returns the current time
+  getCurrentTime: {
+    handler: async (state) => {
+      return { time: new Date().toISOString() };
+    },
+  },
 });
 ```
 
-#### Using Actions in Other Contexts
+#### Using Actions in Service Worker
 
 Actions can be called from any context that connects to Crann:
 
 ```typescript
 // content-script.ts
 import { connect } from "crann";
+import { config } from "./config";
 
-const [useCrann, get, set, subscribe, getAgentInfo, onReady, callAction] =
-  connect(config);
+const { get, subscribe, onReady, callAction } = connect(config);
 
 // Wait for connection
 onReady((status) => {
   if (status.connected) {
-    // Call the increment action
-    callAction("increment", 1).then((result) => {
-      console.log("Counter incremented:", result);
-    });
+    console.log("Connected to Crann");
 
-    // Call the fetchData action
-    callAction("fetchData", "https://api.example.com/data")
-      .then((result) => {
-        console.log("Fetched data:", result.data);
-      })
-      .catch((error) => {
-        console.error("Failed to fetch data:", error);
+    // Use the increment action
+    document
+      .getElementById("incrementButton")
+      .addEventListener("click", async () => {
+        try {
+          const result = await callAction("increment", 1);
+          console.log("Counter incremented to:", result);
+          // Counter is updated in state automatically
+        } catch (error) {
+          console.error("Failed to increment:", error.message);
+        }
+      });
+
+    // Use the fetchData action
+    document
+      .getElementById("fetchButton")
+      .addEventListener("click", async () => {
+        try {
+          const result = await callAction(
+            "fetchData",
+            "https://api.example.com/data"
+          );
+          console.log("Fetched data:", result.data);
+        } catch (error) {
+          console.error("Failed to fetch data:", error.message);
+        }
       });
   }
 });
+```
+
+#### Using Actions in Popup/Options Pages
+
+The same pattern works in popup and options pages:
+
+```typescript
+// popup.ts
+import { connect } from "crann";
+import { config } from "./config";
+
+const { get, callAction } = connect(config);
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Display the current counter
+  const counterElement = document.getElementById("counter");
+  counterElement.textContent = get().counter.toString();
+
+  // Add click handler for the increment button
+  document
+    .getElementById("incrementButton")
+    .addEventListener("click", async () => {
+      try {
+        const result = await callAction("increment", 1);
+        counterElement.textContent = result.counter.toString();
+      } catch (error) {
+        console.error("Failed to increment:", error.message);
+      }
+    });
+
+  // Get and display the current time
+  document.getElementById("timeButton").addEventListener("click", async () => {
+    try {
+      const result = await callAction("getCurrentTime");
+      document.getElementById("currentTime").textContent = result.time;
+    } catch (error) {
+      console.error("Failed to get time:", error.message);
+    }
+  });
+});
+```
+
+#### Using Actions in React Components
+
+Crann's React integration also supports RPC actions through the `useCrannState` hook:
+
+```tsx
+// MyReactComponent.tsx
+import React, { useState } from "react";
+import { createCrannStateHook } from "crann";
+import { config } from "./config";
+
+// Create a custom hook for your config
+const useCrannState = createCrannStateHook(config);
+
+function CounterComponent() {
+  const { useStateItem, callAction } = useCrannState();
+  const [counter, setCounter] = useStateItem("counter");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [currentTime, setCurrentTime] = useState<string | null>(null);
+
+  const handleIncrement = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Call the increment action defined in the service worker
+      const result = await callAction("increment", 1);
+      // Note: The state will be automatically updated through the subscription,
+      // but you can also use the result directly if needed
+      console.log("Counter incremented to:", result.counter);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCurrentTime = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const result = await callAction("getCurrentTime");
+      setCurrentTime(result.time);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <h2>Counter: {counter}</h2>
+
+      <button onClick={handleIncrement} disabled={isLoading}>
+        {isLoading ? "Incrementing..." : "Increment Counter"}
+      </button>
+
+      <button onClick={fetchCurrentTime} disabled={isLoading}>
+        {isLoading ? "Fetching..." : "Get Current Time"}
+      </button>
+
+      {currentTime && <p>Current time: {currentTime}</p>}
+      {error && <p className="error">Error: {error}</p>}
+    </div>
+  );
+}
+
+export default CounterComponent;
 ```
 
 #### Key Benefits of RPC Actions
@@ -378,6 +512,8 @@ onReady((status) => {
 3. **Service Worker Context**: Actions run in the service worker where they have access to all extension APIs
 4. **Automatic State Updates**: Actions can return state updates that are automatically synchronized
 5. **Error Handling**: Proper error propagation from service worker to calling context
+6. **Unified API**: Same pattern works across all contexts (content scripts, popups, React components)
+7. **Simplified Architecture**: Centralize complex operations in the service worker
 
 ### React Integration
 
