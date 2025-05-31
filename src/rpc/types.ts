@@ -1,22 +1,24 @@
+import { BrowserLocation } from "porter-source";
+
 export type MessageMap = {
   call: {
     id: string;
     args: any[];
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   result: {
     id: string;
     result: any;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   error: {
     id: string;
     error: string;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   release: {
     id: string;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
 };
 
@@ -124,7 +126,7 @@ export type CallMessage = {
   call: {
     id: string;
     args: any[];
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
@@ -132,7 +134,7 @@ export type ResultMessage = {
   result: {
     id: string;
     result: any;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
@@ -140,14 +142,14 @@ export type ErrorMessage = {
   error: {
     id: string;
     error: string;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
 export type ReleaseMessage = {
   release: {
     id: string;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
