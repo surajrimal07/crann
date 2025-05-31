@@ -1,4 +1,5 @@
 import { Partition, Persistence } from "crann";
+import { BrowserLocation } from "porter-source";
 
 // Define our test configuration
 export const config = {
@@ -28,10 +29,12 @@ export const config = {
     handler: async (
       state: any,
       setState: (newState: Partial<any>) => Promise<void>,
+      target: BrowserLocation,
       amount: number
     ) => {
       const newValue = state.timesUsed + amount;
       await setState({ timesUsed: newValue });
+      console.log("Increment heard from target: ", target);
       return newValue;
     },
     validate: (amount: number) => {

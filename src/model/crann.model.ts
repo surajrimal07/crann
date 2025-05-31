@@ -1,4 +1,4 @@
-import { AgentInfo } from "porter-source";
+import { AgentInfo, BrowserLocation } from "porter-source";
 
 export const Partition = {
   Instance: "instance" as const,
@@ -13,11 +13,13 @@ export const Persistence = {
 
 export type ActionHandler<TState, TArgs extends any[], TResult> = (
   state: TState,
+  setState: (newState: Partial<TState>) => Promise<void>,
+  target: BrowserLocation,
   ...args: TArgs
 ) => Promise<TResult>;
 
 export type ActionDefinition<TState, TArgs extends any[], TResult> = {
-  handler: (state: TState, ...args: TArgs) => Promise<TResult>;
+  handler: ActionHandler<TState, TArgs, TResult>;
   validate?: (...args: TArgs) => void;
 };
 
@@ -30,19 +32,6 @@ export type ConfigItem<T> = {
   default: T;
   partition?: (typeof Partition)[keyof typeof Partition];
   persist?: (typeof Persistence)[keyof typeof Persistence];
-};
-
-// Internal types (with required type fields)
-type InternalConfigItem<T> = ConfigItem<T> & {
-  type: "state";
-};
-
-type InternalActionDefinition<
-  TState,
-  TArgs extends any[],
-  TResult
-> = ActionDefinition<TState, TArgs, TResult> & {
-  type: "action";
 };
 
 export type AnyConfig = Record<
