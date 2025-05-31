@@ -86,7 +86,8 @@ export class Crann<TConfig extends AnyConfig> {
         return;
       }
 
-      this.logger.log("onMessagesSet received for agent:", {
+      const agentTag = getAgentTag(info);
+      this.logger.withTag(agentTag).log("onMessagesSet received for agent:", {
         id: info.id,
         context: info.location.context,
         tabId: info.location.tabId,
@@ -96,17 +97,15 @@ export class Crann<TConfig extends AnyConfig> {
 
       // Skip sending initialState if we've already sent it to this agent
       if (agentsInitialized.has(info.id)) {
-        this.logger.log(
-          "Already sent initialState to agent, skipping:",
-          info.id
-        );
+        this.logger
+          .withTag(agentTag)
+          .log("Already sent initialState to agent, skipping:", info.id);
         return;
       }
 
       // Add the agent to the set of agents we've already sent initialState to
       agentsInitialized.add(info.id);
 
-      const agentTag = getAgentTag(info);
       this.logger
         .withTag(agentTag)
         .log("Messages set received. Sending initial state.", { info });
