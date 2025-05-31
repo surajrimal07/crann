@@ -1,22 +1,24 @@
+import { BrowserLocation } from "porter-source";
+
 export type MessageMap = {
   call: {
     id: string;
     args: any[];
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   result: {
     id: string;
     result: any;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   error: {
     id: string;
     error: string;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
   release: {
     id: string;
-    target?: any; // Missing target property
+    target?: BrowserLocation;
   };
 };
 
@@ -106,25 +108,11 @@ export interface EncodingStrategyApi {
   call(id: string, args: any[], retainedBy?: Iterable<Retainer>): Promise<any>;
 }
 
-export type ActionHandler<TState, TArgs extends any[], TResult> = (
-  state: TState,
-  ...args: TArgs
-) => Promise<TResult>;
-
-export type ActionDefinition<TState, TArgs extends any[], TResult> = {
-  handler: ActionHandler<TState, TArgs, TResult>;
-  validate?: (...args: TArgs) => void;
-};
-
-export type ActionsConfig<TState> = {
-  [K: string]: ActionDefinition<TState, any[], Partial<TState>>;
-};
-
 export type CallMessage = {
   call: {
     id: string;
     args: any[];
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
@@ -132,7 +120,7 @@ export type ResultMessage = {
   result: {
     id: string;
     result: any;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
@@ -140,14 +128,14 @@ export type ErrorMessage = {
   error: {
     id: string;
     error: string;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 
 export type ReleaseMessage = {
   release: {
     id: string;
-    target?: any;
+    target?: BrowserLocation;
   };
 };
 

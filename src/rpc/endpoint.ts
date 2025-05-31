@@ -2,7 +2,6 @@ import { createBasicEncoder } from "./encoding";
 import type {
   MessageEndpoint,
   RemoteCallable,
-  ActionsConfig,
   EncodingStrategy,
   EncodingStrategyApi,
   Retainer,
@@ -11,6 +10,7 @@ import type {
   ErrorMessage,
   RPCMessage,
 } from "./types";
+import { ActionsConfig } from "../model/crann.model";
 import { Logger } from "../utils/logger";
 import { getAgentTag } from "../utils/agent";
 
@@ -64,6 +64,7 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
   messenger: MessageEndpoint,
   state: TState,
   actions: TActions,
+  setState?: (newState: Partial<TState>) => Promise<void>,
   encodingStrategy?: EncodingStrategy
 ): RemoteCallable<TActions> {
   const callbacks = new Map<number, (result: unknown) => void>();
@@ -77,14 +78,6 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
   if (messenger.context?.agentInfo) {
     logger.setTag(getAgentTag(messenger.context.agentInfo));
   }
-
-  // State update function that will be passed to action handlers
-  const setState = async (newState: Partial<TState>) => {
-    // This is a stub - in the real implementation, this needs to be connected
-    // to the actual state update mechanism
-    Object.assign(state as object, newState);
-    return Promise.resolve();
-  };
 
   messenger.addEventListener("message", (event) => {
     logger.debug("Message received:", event);
@@ -110,8 +103,23 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
           action.validate(...args);
         }
 
+        // Ensure we have a target - if not provided, we need to handle this case
+        if (!target) {
+          messenger.postMessage([
+            id,
+            {
+              error: {
+                id: callId,
+                error: "No target provided for action call",
+                target,
+              },
+            } as ErrorMessage,
+          ] as [number, ErrorMessage]);
+          return;
+        }
+
         // Handle both synchronous and asynchronous results
-        Promise.resolve(action.handler(state, setState, ...args)).then(
+        Promise.resolve(action.handler(state, setState!, target, ...args)).then(
           (result: unknown) => {
             logger.debug("Action handler result:", {
               result,

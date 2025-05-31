@@ -1,11 +1,7 @@
 import { source, AgentInfo, connect, Message, AgentAPI } from "porter-source";
 import { createEndpoint } from "./endpoint";
-import {
-  MessageEndpoint,
-  ActionsConfig,
-  CallMessage,
-  RPCMessage,
-} from "./types";
+import { MessageEndpoint, CallMessage, RPCMessage } from "./types";
+import { ActionsConfig } from "../model/crann.model";
 import { Logger } from "../utils/logger";
 import { getAgentTag } from "../utils/agent";
 
@@ -15,7 +11,8 @@ export function createCrannRPCAdapter<
 >(
   initialState: TState,
   actions: TActions,
-  porter?: ReturnType<typeof source> | ReturnType<typeof connect>
+  porter?: ReturnType<typeof source> | ReturnType<typeof connect>,
+  setState?: (newState: Partial<TState>) => Promise<void>
 ) {
   const porterInstance = porter || source("crann");
 
@@ -131,7 +128,7 @@ export function createCrannRPCAdapter<
     },
   };
 
-  return createEndpoint(messageEndpoint, initialState, actions);
+  return createEndpoint(messageEndpoint, initialState, actions, setState);
 }
 
 // Don't love this being here. Let's move it sometime soon,
