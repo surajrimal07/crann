@@ -1,6 +1,5 @@
 import { connect } from "crann";
 import { config } from "./config";
-import { ConnectReturn } from "../../../dist/types/model/crann.model";
 
 // Create a simple UI to test our actions
 function createTestUI() {

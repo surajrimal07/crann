@@ -1,10 +1,15 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { ConfigItem, DerivedState, StateUpdate } from "../model/crann.model";
+import {
+  AnyConfig,
+  ConfigItem,
+  DerivedState,
+  StateUpdate,
+} from "../model/crann.model";
 import { connect } from "../crannAgent";
 
-export function createCrannStateHook<
-  TConfig extends Record<string, ConfigItem<any>>
->(config: TConfig) {
+export function createCrannStateHook<TConfig extends AnyConfig>(
+  config: TConfig
+) {
   return function useCrannState(context?: string) {
     const { useCrann, get, set, subscribe, callAction } = useMemo(() => {
       const instance = connect(config);
