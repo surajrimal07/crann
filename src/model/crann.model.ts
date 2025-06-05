@@ -51,20 +51,26 @@ export type ActionConfig<T extends AnyConfig> = {
 
 // Update DerivedState to use the internal types
 export type DerivedState<T extends AnyConfig> = {
-  [P in keyof T]: T[P] extends ConfigItem<any> ? T[P]["default"] : never;
+  [P in keyof T]: T[P] extends ConfigItem<infer DefaultType>
+    ? DefaultType
+    : never;
 };
 
 // Update DerivedInstanceState to use the internal types
 export type DerivedInstanceState<T extends AnyConfig> = {
-  [P in keyof T]: T[P] extends ConfigItem<any> & { partition: "instance" }
-    ? T[P]["default"]
+  [P in keyof T]: T[P] extends ConfigItem<infer DefaultType> & {
+    partition: "instance";
+  }
+    ? DefaultType
     : never;
 };
 
 // Update DerivedServiceState to use the internal types
 export type DerivedServiceState<T extends AnyConfig> = {
-  [P in keyof T]: T[P] extends ConfigItem<any> & { partition: "service" }
-    ? T[P]["default"]
+  [P in keyof T]: T[P] extends ConfigItem<infer DefaultType>
+    ? T[P] extends { partition: "instance" }
+      ? never
+      : DefaultType
     : never;
 };
 

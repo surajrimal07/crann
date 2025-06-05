@@ -1,8 +1,9 @@
 import { Partition, Persistence } from "crann";
 import { BrowserLocation } from "porter-source";
+import { CrannConfig } from "../../../dist/types/model/crann.model";
 
 // Define our test configuration
-export const config = {
+export const config: CrannConfig<any> = {
   // Basic state with default value
   active: { default: false },
 
@@ -15,13 +16,13 @@ export const config = {
   // State that persists between sessions
   timesUsed: {
     default: 0,
-    persistence: Persistence.Local,
+    persist: Persistence.Local,
   },
 
   // State that resets when the browser closes
   sessionStart: {
     default: new Date(),
-    persistence: Persistence.Session,
+    persist: Persistence.Session,
   },
 
   // RPC action example
