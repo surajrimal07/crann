@@ -14,6 +14,7 @@ import {
   SetStateFunction,
   StateChangeListener,
   StateChanges,
+  MergeStateTypes,
 } from "./model/crann.model";
 import { AgentInfo, source, Agent } from "porter-source";
 import { deepEqual } from "./utils/deepEqual";
@@ -380,13 +381,23 @@ export class Crann<TConfig extends AnyConfig> {
 
   public async set(state: Partial<DerivedServiceState<TConfig>>): Promise<void>;
   public async set(
-    state: Partial<DerivedInstanceState<TConfig>>,
+    state: Partial<
+      MergeStateTypes<
+        DerivedInstanceState<TConfig>,
+        DerivedServiceState<TConfig>
+      >
+    >,
     key: string
   ): Promise<void>;
   public async set(
     state:
       | Partial<DerivedServiceState<TConfig>>
-      | Partial<DerivedInstanceState<TConfig>>,
+      | Partial<
+          MergeStateTypes<
+            DerivedInstanceState<TConfig>,
+            DerivedServiceState<TConfig>
+          >
+        >,
     key?: string
   ): Promise<void> {
     const instance = {} as Partial<DerivedInstanceState<TConfig>>;
@@ -554,7 +565,10 @@ export interface CrannAPI<TConfig extends AnyConfig> {
     (state: Partial<DerivedServiceState<TConfig>>): Promise<void>;
     (
       state: Partial<
-        DerivedInstanceState<TConfig> & DerivedServiceState<TConfig>
+        MergeStateTypes<
+          DerivedInstanceState<TConfig>,
+          DerivedServiceState<TConfig>
+        >
       >,
       key: string
     ): Promise<void>;

@@ -89,6 +89,15 @@ export type DerivedServiceState<T extends AnyConfig> = {
     : never;
 };
 
+// Remove never properties from a type
+type OmitNever<T> = {
+  [K in keyof T as T[K] extends never ? never : K]: T[K];
+};
+
+// Merge by taking all non-never properties from both types
+export type MergeStateTypes<TInstance, TService> = OmitNever<TInstance> &
+  OmitNever<TService>;
+
 // Type guards
 export const isStateItem = <T>(
   item: ConfigItem<T> | ActionDefinition<any, any[], any>

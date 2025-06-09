@@ -1,9 +1,9 @@
-import { Partition, Persistence } from "crann";
+import { createConfig, Partition, Persistence } from "crann";
 import { BrowserLocation } from "porter-source";
 import { AnyConfig, CrannConfig } from "../../../dist/types/model/crann.model";
 
 // Define our test configuration
-export const config = {
+export const config = createConfig({
   // Basic state with default value
   active: { default: false },
 
@@ -11,7 +11,6 @@ export const config = {
   name: {
     default: "",
     partition: Partition.Instance,
-    something: "hello",
   },
 
   // State that persists between sessions
@@ -48,4 +47,4 @@ export const config = {
       if (amount < 0) throw new Error("Amount must be positive");
     },
   },
-};
+});
