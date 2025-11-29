@@ -1,4 +1,4 @@
-import { AgentInfo } from "porter-source-fork";
+import { AgentInfo } from 'porter-source-fork';
 
 /**
  * Formats an agent tag based on the agent information
@@ -15,7 +15,7 @@ export function getAgentTag(
     if (tabIdStr.length >= 4) {
       return tabIdStr.slice(-4);
     } else {
-      return tabIdStr.padStart(4, "0");
+      return tabIdStr.padStart(4, '0');
     }
   };
 

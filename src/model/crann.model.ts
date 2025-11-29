@@ -1,14 +1,14 @@
-import { AgentInfo, BrowserLocation } from "porter-source-fork";
+import { AgentInfo, BrowserLocation } from 'porter-source-fork';
 
 export const Partition = {
-  Instance: "instance" as const,
-  Service: "service" as const,
+  Instance: 'instance' as const,
+  Service: 'service' as const,
 };
 
 export const Persistence = {
-  Session: "session" as const,
-  Local: "local" as const,
-  None: "none" as const,
+  Session: 'session' as const,
+  Local: 'local' as const,
+  None: 'none' as const,
 };
 
 export type ActionHandler<TState, TArgs extends any[], TResult> = (
@@ -74,7 +74,7 @@ export type DerivedState<T extends AnyConfig> = {
 // Update DerivedInstanceState to use the internal types
 export type DerivedInstanceState<T extends AnyConfig> = {
   [P in keyof T]: T[P] extends ConfigItem<infer DefaultType> & {
-    partition: "instance";
+    partition: 'instance';
   }
     ? DefaultType
     : never;
@@ -83,7 +83,7 @@ export type DerivedInstanceState<T extends AnyConfig> = {
 // Update DerivedServiceState to use the internal types
 export type DerivedServiceState<T extends AnyConfig> = {
   [P in keyof T]: T[P] extends ConfigItem<infer DefaultType>
-    ? T[P] extends { partition: "instance" }
+    ? T[P] extends { partition: 'instance' }
       ? never
       : DefaultType
     : never;
@@ -102,13 +102,13 @@ export type MergeStateTypes<TInstance, TService> = OmitNever<TInstance> &
 export const isStateItem = <T>(
   item: ConfigItem<T> | ActionDefinition<any, any[], any>
 ): item is ConfigItem<T> => {
-  return !("handler" in item);
+  return !('handler' in item);
 };
 
 export const isActionItem = <TState, TArgs extends any[], TResult>(
   item: ConfigItem<any> | ActionDefinition<TState, TArgs, TResult>
 ): item is ActionDefinition<TState, TArgs, TResult> => {
-  return "handler" in item;
+  return 'handler' in item;
 };
 
 type StateSubscriber<TConfig extends AnyConfig> = {
@@ -128,22 +128,22 @@ type CrannAgent<TConfig extends AnyConfig> = {
 };
 
 type UseCrann<TConfig extends AnyConfig> = <
-  K extends keyof DerivedState<TConfig>
+  K extends keyof DerivedState<TConfig>,
 >(
   key: K
 ) => [
   DerivedState<TConfig>[K],
   (value: DerivedState<TConfig>[K]) => void,
-  (callback: (update: StateChangeUpdate<TConfig, K>) => void) => () => void
+  (callback: (update: StateChangeUpdate<TConfig, K>) => void) => () => void,
 ];
 
 type ConnectReturn<TConfig extends AnyConfig> = {
   useCrann: UseCrann<TConfig>;
-  get: CrannAgent<TConfig>["get"];
-  set: CrannAgent<TConfig>["set"];
-  subscribe: CrannAgent<TConfig>["subscribe"];
-  getAgentInfo: CrannAgent<TConfig>["getAgentInfo"];
-  onReady: CrannAgent<TConfig>["onReady"];
+  get: CrannAgent<TConfig>['get'];
+  set: CrannAgent<TConfig>['set'];
+  subscribe: CrannAgent<TConfig>['subscribe'];
+  getAgentInfo: CrannAgent<TConfig>['getAgentInfo'];
+  onReady: CrannAgent<TConfig>['onReady'];
   callAction: (name: string, ...args: any[]) => Promise<any>;
 };
 
@@ -153,7 +153,7 @@ export type StateChanges<T extends AnyConfig> = {
 
 type StateChangeUpdate<
   TConfig extends AnyConfig,
-  K extends keyof DerivedState<TConfig>
+  K extends keyof DerivedState<TConfig>,
 > = {
   current: DerivedState<TConfig>[K];
   previous: DerivedState<TConfig>[K];

@@ -11,14 +11,11 @@ import {
   isStateItem,
   isActionItem,
   StateChanges,
-} from "./model/crann.model";
-import { AgentInfo, connect as connectPorter } from "porter-source-fork";
-import { createCrannRPCAdapter } from "./rpc/adapter";
-import { Logger } from "./utils/logger";
-import { getAgentTag } from "./utils/agent";
-
-let connectionStatus: ConnectionStatus = { connected: false };
-let crannInstance: unknown = null;
+} from './model/crann.model';
+import { AgentInfo, connect as connectPorter } from 'porter-source-fork';
+import { createCrannRPCAdapter } from './rpc/adapter';
+import { Logger } from './utils/logger';
+import { getAgentTag } from './utils/agent';
 
 export function connect<TConfig extends AnyConfig>(
   config: TConfig,
@@ -31,34 +28,24 @@ export function connect<TConfig extends AnyConfig>(
   if (debug) {
     Logger.setDebug(true);
   }
-  const logger = Logger.forContext("Agent");
+  const logger = Logger.forContext('Agent');
 
+  let connectionStatus: ConnectionStatus = { connected: false };
   let _myInfo: AgentInfo;
-  let _myTag = "unset";
+  let _myTag = 'unset';
   const readyCallbacks = new Set<(info: ConnectionStatus) => void>();
 
   logger.log(
-    "Initializing Crann Agent" + (context ? ` with context: ${context}` : "")
+    'Initializing Crann Agent' + (context ? ` with context: ${context}` : '')
   );
-  if (crannInstance) {
-    logger.log("We had an instance already, returning");
 
-    if (connectionStatus.connected) {
-      logger.log("Connect, calling onReady callback");
-      setTimeout(() => {
-        readyCallbacks.forEach((callback) => callback(connectionStatus));
-      }, 0);
-    }
-    return crannInstance as ConnectReturn<TConfig>;
-  }
-
-  logger.log("No existing instance, creating a new one");
+  logger.log('No existing instance, creating a new one');
   const porter = connectPorter({
-    namespace: "crann",
+    namespace: 'crann',
     debug: false,
   });
 
-  logger.log("Porter connection created");
+  logger.log('Porter connection created');
 
   // Initialize RPC with empty actions since this is the client side
   const actions = Object.entries(config)
@@ -74,7 +61,7 @@ export function connect<TConfig extends AnyConfig>(
       return {
         ...acc,
         [key]: {
-          type: "action",
+          type: 'action',
           handler: action.handler,
           validate: action.validate,
         },
@@ -91,13 +78,13 @@ export function connect<TConfig extends AnyConfig>(
 
   porter.on({
     initialState: (message) => {
-      logger.log("initialState received", {
+      logger.log('initialState received', {
         alreadyReceived: initialStateReceived,
         payload: message.payload,
       });
 
       if (initialStateReceived) {
-        logger.log("Ignoring duplicate initialState message");
+        logger.log('Ignoring duplicate initialState message');
         return;
       }
 
@@ -117,7 +104,7 @@ export function connect<TConfig extends AnyConfig>(
         }
       );
       readyCallbacks.forEach((callback) => {
-        logger.log("Calling onReady callbacks");
+        logger.log('Calling onReady callbacks');
         callback(connectionStatus);
       });
       listeners.forEach((listener) => {
@@ -127,7 +114,7 @@ export function connect<TConfig extends AnyConfig>(
     stateUpdate: (message) => {
       changes = message.payload.state;
       _state = { ..._state, ...changes };
-      logger.log("State updated:", { message, changes, _state });
+      logger.log('State updated:', { message, changes, _state });
       if (!changes) return;
 
       listeners.forEach((listener) => {
@@ -142,17 +129,17 @@ export function connect<TConfig extends AnyConfig>(
       });
     },
   });
-  logger.log("Porter connected. Setting up state and listeners");
+  logger.log('Porter connected. Setting up state and listeners');
   let _state = getDerivedState(config);
   let changes: StateChanges<TConfig> | null = null;
   const listeners = new Set<StateSubscriber<TConfig>>();
 
-  logger.log("Completed setup, returning instance");
+  logger.log('Completed setup, returning instance');
 
   const get = () => _state;
   const set = (newState: StateChanges<TConfig>) => {
-    logger.log("Calling post with setState", newState);
-    porter.post({ action: "setState", payload: { state: newState } });
+    logger.log('Calling post with setState', newState);
+    porter.post({ action: 'setState', payload: { state: newState } });
   };
 
   const subscribe = (
@@ -172,12 +159,12 @@ export function connect<TConfig extends AnyConfig>(
     const getValue = () => {
       const value = get()[key];
       return value as TConfig[K] extends ConfigItem<any>
-        ? TConfig[K]["default"]
+        ? TConfig[K]['default']
         : never;
     };
 
     const setValue = (
-      value: TConfig[K] extends ConfigItem<any> ? TConfig[K]["default"] : never
+      value: TConfig[K] extends ConfigItem<any> ? TConfig[K]['default'] : never
     ) => set({ [key]: value } as StateChanges<TConfig>);
 
     const subscribeToChanges = (
@@ -206,10 +193,10 @@ export function connect<TConfig extends AnyConfig>(
   };
 
   const onReady = (callback: (info: ConnectionStatus) => void) => {
-    logger.log("onReady callback added");
+    logger.log('onReady callback added');
     readyCallbacks.add(callback);
     if (connectionStatus.connected) {
-      logger.log("calling onReady callback");
+      logger.log('calling onReady callback');
       setTimeout(() => {
         callback(connectionStatus);
       }, 0);
@@ -220,7 +207,7 @@ export function connect<TConfig extends AnyConfig>(
   const getAgentInfo = () => _myInfo;
 
   const callAction = async (name: string, ...args: any[]) => {
-    logger.log("Calling action", name, args);
+    logger.log('Calling action', name, args);
     return (rpcEndpoint as any)[name](...args);
   };
 
@@ -234,13 +221,7 @@ export function connect<TConfig extends AnyConfig>(
     callAction,
   };
 
-  crannInstance = instance;
-
-  return crannInstance as ConnectReturn<TConfig>;
-}
-
-export function connected(): boolean {
-  return crannInstance !== null;
+  return instance as ConnectReturn<TConfig>;
 }
 
 function getDerivedState<TConfig extends AnyConfig>(

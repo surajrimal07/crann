@@ -1,3 +1,4 @@
+import { createBasicEncoder } from './encoding';
 import type {
   MessageEndpoint,
   RemoteCallable,
@@ -8,10 +9,10 @@ import type {
   ResultMessage,
   ErrorMessage,
   RPCMessage,
-} from "./types";
-import { ActionsConfig, SetStateFunction } from "../model/crann.model";
-import { Logger } from "../utils/logger";
-import { getAgentTag } from "../utils/agent";
+} from './types';
+import { ActionsConfig, SetStateFunction } from '../model/crann.model';
+import { Logger } from '../utils/logger';
+import { getAgentTag } from '../utils/agent';
 
 const CALL = 0;
 const RESULT = 1;
@@ -70,7 +71,7 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
   const retainedObjects = new Map<string, Set<Retainer>>();
 
   // Create logger - will be used in Service Worker or Agent context based on the messenger's context
-  const contextPrefix = messenger.context?.isServiceWorker ? "Core" : "Agent";
+  const contextPrefix = messenger.context?.isServiceWorker ? 'Core' : 'Agent';
   const logger = Logger.forContext(`${contextPrefix}:RPC`);
 
   // If we have agent info, set the tag
@@ -78,12 +79,12 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
     logger.setTag(getAgentTag(messenger.context.agentInfo));
   }
 
-  messenger.addEventListener("message", (event) => {
-    logger.debug("Message received:", event);
+  messenger.addEventListener('message', (event) => {
+    logger.debug('Message received:', event);
     const [id, message] = event.data as [number, RPCMessage];
 
-    if ("call" in message && "args" in message.call) {
-      logger.debug("Processing call message:", message);
+    if ('call' in message && 'args' in message.call) {
+      logger.debug('Processing call message:', message);
       const callMessage = message.call;
       const { id: callId, args, target } = callMessage;
       const action = actions[callId];
@@ -91,7 +92,7 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
         messenger.postMessage([
           id,
           {
-            error: { id: callId, error: "Action not found", target },
+            error: { id: callId, error: 'Action not found', target },
           } as ErrorMessage,
         ] as [number, ErrorMessage]);
         return;
@@ -109,7 +110,7 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
             {
               error: {
                 id: callId,
-                error: "No target provided for action call",
+                error: 'No target provided for action call',
                 target,
               },
             } as ErrorMessage,
@@ -118,14 +119,14 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
         }
 
         const currentState = stateGetter();
-        logger.debug("Executing action with most current state:", currentState);
+        logger.debug('Executing action with most current state:', currentState);
 
         // Handle both synchronous and asynchronous results
         Promise.resolve(
           action.handler(currentState, setState!, target, ...args)
         ).then(
           (result: unknown) => {
-            logger.debug("Action handler result:", {
+            logger.debug('Action handler result:', {
               result,
               target,
             });
@@ -153,26 +154,26 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
           messenger.postMessage([
             id,
             {
-              error: { id: callId, error: "Unknown error occurred", target },
+              error: { id: callId, error: 'Unknown error occurred', target },
             } as ErrorMessage,
           ] as [number, ErrorMessage]);
         }
       }
-    } else if ("result" in message) {
+    } else if ('result' in message) {
       const resultMessage = message.result;
       const callback = callbacks.get(id);
       if (callback) {
         callback(resultMessage.result);
         callbacks.delete(id);
       }
-    } else if ("error" in message) {
+    } else if ('error' in message) {
       const errorMessage = message.error;
       const callback = callbacks.get(id);
       if (callback) {
         callback(Promise.reject(new Error(errorMessage.error)));
         callbacks.delete(id);
       }
-    } else if ("release" in message) {
+    } else if ('release' in message) {
       const releaseMessage = message.release;
       const retainers = retainedObjects.get(releaseMessage.id);
       if (retainers) {
@@ -196,7 +197,7 @@ export function createEndpoint<TState, TActions extends ActionsConfig<TState>>(
           });
           messenger.postMessage([id, { call: { id: prop, args } }] as [
             number,
-            CallMessage
+            CallMessage,
           ]);
         });
       };
@@ -223,7 +224,7 @@ function createCallable<T>(
   let call: any;
 
   if (callable == null) {
-    if (typeof Proxy !== "function") {
+    if (typeof Proxy !== 'function') {
       throw new Error(
         `You must pass an array of callable methods in environments without Proxies.`
       );

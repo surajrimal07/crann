@@ -1,4 +1,4 @@
-import { isDebugEnabled } from "./debug";
+import { isDebugEnabled } from './debug';
 
 export type StateChangeMetadata = {
   source: string;
@@ -19,9 +19,9 @@ export function trackStateChange(
     if (isDebugEnabled()) {
       // Get the stack trace to find the actual caller
       const stack = new Error().stack;
-      const lines = stack?.split("\n") || [];
+      const lines = stack?.split('\n') || [];
       const callerMatch = lines[3]?.match(/at\s+(\S+)\s+/);
-      const caller = callerMatch ? callerMatch[1] : "unknown";
+      const caller = callerMatch ? callerMatch[1] : 'unknown';
 
       const changes = args.length > 1 ? args[1] : undefined;
 

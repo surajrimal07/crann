@@ -1,5 +1,5 @@
-import { RETAINED_BY, RETAIN_METHOD, RELEASE_METHOD } from "./types";
-import type { Retainer, MemoryManageable } from "./types";
+import { RETAINED_BY, RETAIN_METHOD, RELEASE_METHOD } from './types';
+import type { Retainer, MemoryManageable } from './types';
 
 export { RETAINED_BY, RETAIN_METHOD, RELEASE_METHOD };
 export type { Retainer, MemoryManageable };
@@ -42,7 +42,7 @@ export function retain(value: any, { deep = true } = {}): boolean {
         (canRetain, item) => retain(item, { deep }) || canRetain,
         canRetain
       );
-    } else if (typeof value === "object" && value != null) {
+    } else if (typeof value === 'object' && value != null) {
       return Object.keys(value).reduce(
         (canRetain, key) => retain(value[key], { deep }) || canRetain,
         canRetain
@@ -66,7 +66,7 @@ export function release(value: any, { deep = true } = {}): boolean {
         (canRelease, item) => release(item, { deep }) || canRelease,
         canRelease
       );
-    } else if (typeof value === "object" && value != null) {
+    } else if (typeof value === 'object' && value != null) {
       return Object.keys(value).reduce(
         (canRelease, key) => release(value[key], { deep }) || canRelease,
         canRelease

@@ -5,8 +5,8 @@ import {
   EncodingStrategy,
   EncodingStrategyApi,
 } from '../types';
-import type {Retainer} from '../memory';
-import {StackFrame, isMemoryManageable} from '../memory';
+import type { Retainer } from '../memory';
+import { StackFrame, isMemoryManageable } from '../memory';
 
 type AnyFunction = (...args: any[]) => any;
 
@@ -26,7 +26,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
 
       if (func == null) {
         throw new Error(
-          'You attempted to call a function that was already released.',
+          'You attempted to call a function that was already released.'
         );
       }
 
@@ -82,7 +82,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
       const result = Object.keys(value).reduce((object, key) => {
         const [result, nestedTransferables = []] = encode((value as any)[key]);
         transferables.push(...nestedTransferables);
-        return {...object, [key]: result};
+        return { ...object, [key]: result };
       }, {});
 
       return [result, transferables];
@@ -91,7 +91,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
     if (typeof value === 'function') {
       if (functionsToId.has(value as AnyFunction)) {
         const id = functionsToId.get(value as AnyFunction)!;
-        return [{[FUNCTION]: id}];
+        return [{ [FUNCTION]: id }];
       }
 
       const id = api.uuid();
@@ -99,7 +99,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
       functionsToId.set(value as AnyFunction, id);
       idsToFunction.set(id, value as AnyFunction);
 
-      return [{[FUNCTION]: id}];
+      return [{ [FUNCTION]: id }];
     }
 
     return [value];
@@ -120,7 +120,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
       }
 
       if (FUNCTION in value) {
-        const id = (value as {[FUNCTION]: string})[FUNCTION];
+        const id = (value as { [FUNCTION]: string })[FUNCTION];
 
         if (idsToProxy.has(id)) {
           return idsToProxy.get(id)! as any;
@@ -148,13 +148,13 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
         const proxy = (...args: any[]) => {
           if (released) {
             throw new Error(
-              'You attempted to call a function that was already released.',
+              'You attempted to call a function that was already released.'
             );
           }
 
           if (!idsToProxy.has(id)) {
             throw new Error(
-              'You attempted to call a function that was already revoked.',
+              'You attempted to call a function that was already revoked.'
             );
           }
 
@@ -162,9 +162,9 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
         };
 
         Object.defineProperties(proxy, {
-          [RELEASE_METHOD]: {value: release, writable: false},
-          [RETAIN_METHOD]: {value: retain, writable: false},
-          [RETAINED_BY]: {value: retainers, writable: false},
+          [RELEASE_METHOD]: { value: release, writable: false },
+          [RETAIN_METHOD]: { value: retain, writable: false },
+          [RETAINED_BY]: { value: retainers, writable: false },
         });
 
         for (const retainer of retainers) {
@@ -181,7 +181,7 @@ export function createBasicEncoder(api: EncodingStrategyApi): EncodingStrategy {
           ...object,
           [key]: decode((value as any)[key], retainedBy),
         }),
-        {},
+        {}
       ) as any;
     }
 

@@ -1,4 +1,4 @@
-import { BrowserLocation } from "porter-source-fork";
+import { BrowserLocation } from 'porter-source-fork';
 
 export type MessageMap = {
   call: {
@@ -28,11 +28,11 @@ export interface MessageEndpoint {
     transferables?: Transferable[]
   ): void;
   addEventListener(
-    event: "message",
+    event: 'message',
     listener: (event: MessageEvent<[number, RPCMessage]>) => void
   ): void;
   removeEventListener(
-    event: "message",
+    event: 'message',
     listener: (event: MessageEvent<[number, RPCMessage]>) => void
   ): void;
   terminate?(): void;
@@ -52,19 +52,20 @@ type RemoteCallableField<T> = T extends (
 
 export type MaybePromise<T> = T extends Promise<any> ? T : T | Promise<T>;
 
-type AlwaysAsync<T> = T extends Promise<any>
-  ? T
-  : T extends infer U | Promise<infer U>
-  ? Promise<U>
-  : T extends (...args: infer Args) => infer TypeReturned
-  ? (...args: Args) => AlwaysAsync<TypeReturned>
-  : T extends (infer ArrayElement)[]
-  ? AlwaysAsync<ArrayElement>[]
-  : T extends ReadonlyArray<infer ArrayElement>
-  ? ReadonlyArray<AlwaysAsync<ArrayElement>>
-  : T extends object
-  ? { [K in keyof T]: AlwaysAsync<T[K]> }
-  : T;
+type AlwaysAsync<T> =
+  T extends Promise<any>
+    ? T
+    : T extends infer U | Promise<infer U>
+      ? Promise<U>
+      : T extends (...args: infer Args) => infer TypeReturned
+        ? (...args: Args) => AlwaysAsync<TypeReturned>
+        : T extends (infer ArrayElement)[]
+          ? AlwaysAsync<ArrayElement>[]
+          : T extends ReadonlyArray<infer ArrayElement>
+            ? ReadonlyArray<AlwaysAsync<ArrayElement>>
+            : T extends object
+              ? { [K in keyof T]: AlwaysAsync<T[K]> }
+              : T;
 
 export type SafeRpcArgument<T> = T extends (
   ...args: infer Args
@@ -73,16 +74,16 @@ export type SafeRpcArgument<T> = T extends (
     ? (...args: Args) => TypeReturned
     : (...args: Args) => TypeReturned | Promise<TypeReturned>
   : T extends (infer ArrayElement)[]
-  ? SafeRpcArgument<ArrayElement>[]
-  : T extends ReadonlyArray<infer ArrayElement>
-  ? ReadonlyArray<SafeRpcArgument<ArrayElement>>
-  : T extends object
-  ? { [K in keyof T]: SafeRpcArgument<T[K]> }
-  : T;
+    ? SafeRpcArgument<ArrayElement>[]
+    : T extends ReadonlyArray<infer ArrayElement>
+      ? ReadonlyArray<SafeRpcArgument<ArrayElement>>
+      : T extends object
+        ? { [K in keyof T]: SafeRpcArgument<T[K]> }
+        : T;
 
-export const RETAIN_METHOD = Symbol.for("RemoteUi::Retain");
-export const RELEASE_METHOD = Symbol.for("RemoteUi::Release");
-export const RETAINED_BY = Symbol.for("RemoteUi::RetainedBy");
+export const RETAIN_METHOD = Symbol.for('RemoteUi::Retain');
+export const RELEASE_METHOD = Symbol.for('RemoteUi::Release');
+export const RETAINED_BY = Symbol.for('RemoteUi::RetainedBy');
 
 export interface Retainer {
   add(manageable: MemoryManageable): void;

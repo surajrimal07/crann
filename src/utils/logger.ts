@@ -1,8 +1,8 @@
-export type LogLevel = "debug" | "info" | "warn" | "error";
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export class Logger {
   private static debug = false;
-  private static prefix = "CrannLogger";
+  private static prefix = 'CrannLogger';
   private static noOp = function () {};
 
   private context: string;
@@ -58,9 +58,9 @@ export class Logger {
     const formatString = `%c${Logger.prefix}%c [%c${fullContext}%c]`;
 
     // Styles for the prefix and context - updated for better readability on dark backgrounds
-    const prefixStyle = "color: #3fcbff; font-weight: bold"; // Bright cyan
-    const contextStyle = "color: #d58cff; font-weight: bold"; // Bright purple
-    const resetStyle = "";
+    const prefixStyle = 'color: #3fcbff; font-weight: bold'; // Bright cyan
+    const contextStyle = 'color: #d58cff; font-weight: bold'; // Bright purple
+    const resetStyle = '';
 
     if (Logger.debug) {
       return {
