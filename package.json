@@ -1,5 +1,5 @@
 {
-  "name": "crann",
+  "name": "crann-fork",
   "version": "1.0.44",
   "description": "Effortless State Synchronization for Web Extensions",
   "main": "dist/cjs/index.js",
@@ -54,7 +54,7 @@
   },
   "homepage": "https://github.com/moclei/crann#readme",
   "peerDependencies": {
-    "porter-source": "^1.1.20",
+    "porter-source-fork": "^1.1.27",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   }
