@@ -360,15 +360,17 @@ export class Crann<TConfig extends AnyConfig> {
 
   // Todo: Should we return the instance data? What is the point of this.
   public findInstance(location: BrowserLocation): string | null {
-    const agent = this.porter.getAgentByLocation(location);
-    if (!agent) {
+    const agents = this.porter.getAgentsByLocation(location);
+    if (!agents || agents.length === 0) {
       this.logger.log('Could not find agent for location:', { location });
       return null;
     }
     for (const [key, instance] of this.instances) {
-      if (key === agent.info.id) {
-        this.logger.log('Found instance for key:', key);
-        return key;
+      for (const agent of agents) {
+        if (key === agent.info.id) {
+          this.logger.log('Found instance for key:', key);
+          return key;
+        }
       }
     }
     this.logger.log('Could not find instance for context and location:', {
