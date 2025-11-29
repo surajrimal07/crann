@@ -1,6 +1,6 @@
 {
   "name": "crann-fork",
-  "version": "1.0.47",
+  "version": "1.0.48",
   "description": "Effortless State Synchronization for Web Extensions",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
