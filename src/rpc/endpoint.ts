@@ -1,4 +1,3 @@
-import { createBasicEncoder } from "./encoding";
 import type {
   MessageEndpoint,
   RemoteCallable,

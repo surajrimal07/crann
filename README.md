@@ -303,7 +303,7 @@ Actions are defined in your config alongside regular state items. The key differ
 ```typescript
 // service-worker.ts
 import { create } from "crann";
-import { BrowserLocation } from "porter-source";
+import { BrowserLocation } from "porter-source-fork";
 
 const crann = create({
   // Regular state

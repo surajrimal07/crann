@@ -1,4 +1,4 @@
-import { AgentInfo, BrowserLocation } from "porter-source";
+import { AgentInfo, BrowserLocation } from "porter-source-fork";
 
 export const Partition = {
   Instance: "instance" as const,

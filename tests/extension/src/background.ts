@@ -1,6 +1,6 @@
 import { create } from "crann";
 import { config } from "./config";
-import { PorterContext } from "porter-source";
+import { PorterContext } from "porter-source-fork";
 
 // Initialize Crann in the service worker
 const crann = create(config, { debug: true });

@@ -1,4 +1,4 @@
-import { AgentInfo } from "porter-source";
+import { AgentInfo } from "porter-source-fork";
 
 /**
  * Formats an agent tag based on the agent information

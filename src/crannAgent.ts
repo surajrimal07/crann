@@ -12,7 +12,7 @@ import {
   isActionItem,
   StateChanges,
 } from "./model/crann.model";
-import { AgentInfo, connect as connectPorter } from "porter-source";
+import { AgentInfo, connect as connectPorter } from "porter-source-fork";
 import { createCrannRPCAdapter } from "./rpc/adapter";
 import { Logger } from "./utils/logger";
 import { getAgentTag } from "./utils/agent";
