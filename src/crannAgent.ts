@@ -20,6 +20,10 @@ import { getAgentTag } from "./utils/agent";
 let connectionStatus: ConnectionStatus = { connected: false };
 let crannInstance: unknown = null;
 
+// Callbacks for disconnect/reconnect events
+const disconnectCallbacks = new Set<() => void>();
+const reconnectCallbacks = new Set<(info: AgentInfo) => void>();
+
 export function connect<TConfig extends AnyConfig>(
   config: TConfig,
   options?: { context?: string; debug?: boolean }
@@ -40,16 +44,20 @@ export function connect<TConfig extends AnyConfig>(
   logger.log(
     "Initializing Crann Agent" + (context ? ` with context: ${context}` : "")
   );
-  if (crannInstance) {
-    logger.log("We had an instance already, returning");
+  if (crannInstance && connectionStatus.connected) {
+    logger.log("We had an instance already and it's connected, returning");
 
-    if (connectionStatus.connected) {
-      logger.log("Connect, calling onReady callback");
-      setTimeout(() => {
-        readyCallbacks.forEach((callback) => callback(connectionStatus));
-      }, 0);
-    }
+    logger.log("Connect, calling onReady callback");
+    setTimeout(() => {
+      readyCallbacks.forEach((callback) => callback(connectionStatus));
+    }, 0);
     return crannInstance as ConnectReturn<TConfig>;
+  }
+
+  if (crannInstance && !connectionStatus.connected) {
+    logger.log("We had an instance but it's disconnected, creating new connection");
+    // Reset the instance to allow reconnection
+    crannInstance = null;
   }
 
   logger.log("No existing instance, creating a new one");
@@ -59,6 +67,58 @@ export function connect<TConfig extends AnyConfig>(
   });
 
   logger.log("Porter connection created");
+
+  // Handle Porter disconnect/reconnect events
+  porter.onDisconnect(() => {
+    logger.log("Porter connection lost, updating connection status");
+    connectionStatus = { connected: false };
+    
+    // Notify disconnect callbacks
+    disconnectCallbacks.forEach((callback) => {
+      try {
+        callback();
+      } catch (error) {
+        logger.error("Error in disconnect callback:", error);
+      }
+    });
+    
+    // Notify onReady callbacks about disconnection
+    readyCallbacks.forEach((callback) => {
+      try {
+        callback(connectionStatus);
+      } catch (error) {
+        logger.error("Error in onReady callback during disconnect:", error);
+      }
+    });
+  });
+
+  porter.onReconnect((info: AgentInfo) => {
+    logger.log("Porter reconnected, updating connection status", info);
+    connectionStatus = { connected: true, agent: info };
+    
+    // Update agent info
+    _myInfo = info;
+    _myTag = getAgentTag(info);
+    logger.setTag(_myTag);
+    
+    // Notify reconnect callbacks
+    reconnectCallbacks.forEach((callback) => {
+      try {
+        callback(info);
+      } catch (error) {
+        logger.error("Error in reconnect callback:", error);
+      }
+    });
+    
+    // Notify onReady callbacks about reconnection
+    readyCallbacks.forEach((callback) => {
+      try {
+        callback(connectionStatus);
+      } catch (error) {
+        logger.error("Error in onReady callback during reconnect:", error);
+      }
+    });
+  });
 
   // Initialize RPC with empty actions since this is the client side
   const actions = Object.entries(config)
@@ -224,6 +284,22 @@ export function connect<TConfig extends AnyConfig>(
     return (rpcEndpoint as any)[name](...args);
   };
 
+  const onDisconnect = (callback: () => void): (() => void) => {
+    logger.log("onDisconnect callback added");
+    disconnectCallbacks.add(callback);
+    return () => {
+      disconnectCallbacks.delete(callback);
+    };
+  };
+
+  const onReconnect = (callback: (info: AgentInfo) => void): (() => void) => {
+    logger.log("onReconnect callback added");
+    reconnectCallbacks.add(callback);
+    return () => {
+      reconnectCallbacks.delete(callback);
+    };
+  };
+
   const instance = {
     useCrann,
     get,
@@ -232,6 +308,8 @@ export function connect<TConfig extends AnyConfig>(
     getAgentInfo,
     onReady,
     callAction,
+    onDisconnect,
+    onReconnect,
   };
 
   crannInstance = instance;

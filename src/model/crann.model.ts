@@ -145,6 +145,8 @@ type ConnectReturn<TConfig extends AnyConfig> = {
   getAgentInfo: CrannAgent<TConfig>["getAgentInfo"];
   onReady: CrannAgent<TConfig>["onReady"];
   callAction: (name: string, ...args: any[]) => Promise<any>;
+  onDisconnect: (callback: () => void) => () => void;
+  onReconnect: (callback: (info: AgentInfo) => void) => () => void;
 };
 
 export type StateChanges<T extends AnyConfig> = {
