@@ -54,7 +54,7 @@
   },
   "homepage": "https://github.com/moclei/crann#readme",
   "peerDependencies": {
-    "porter-source": "^1.1.20",
+    "porter-source": "^1.1.22",
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
   }
