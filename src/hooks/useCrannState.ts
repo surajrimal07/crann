@@ -1,66 +1,39 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import {
-  AnyConfig,
-  ConfigItem,
-  DerivedState,
-  StateChanges,
-  StateUpdate,
-} from "../model/crann.model";
+import { AnyConfig, DerivedState, StateChanges, StateUpdate } from "../model/crann.model";
 import { connect } from "../crannAgent";
 
-export function createCrannStateHook<TConfig extends AnyConfig>(
-  config: TConfig
-) {
+export function createCrannStateHook<TConfig extends AnyConfig>(config: TConfig) {
   return function useCrannState(context?: string) {
-    const { useCrann, get, set, subscribe, callAction } = useMemo(() => {
-      const instance = connect(config);
-      return instance;
-    }, [context]);
+    const { useCrann, get, set, subscribe, callAction } = useMemo(() => connect(config), [context]);
 
-    const useStateItem = useCallback(
-      <K extends keyof DerivedState<TConfig>>(key: K) => {
-        const [value, setValue] = useState<DerivedState<TConfig>[K]>(
-          get()[key]
-        );
-        const valueRef = useRef(value);
+    // === Full state hook: value + setter + loading ===
+    const useStateItem = useCallback(<K extends keyof DerivedState<TConfig>>(key: K) => {
+      const [value, setValueState] = useState<DerivedState<TConfig>[K]>(get()[key]);
+      const [loading, setLoading] = useState(true);
 
-        useEffect(() => {
-          valueRef.current = value;
-        }, [value]);
+      useEffect(() => {
+        // Update initial value and mark loaded
+        setValueState(get()[key]);
+        setLoading(false);
 
-        useEffect(() => {
-          setValue(get()[key]);
-          const unsubscribe = subscribe(
-            (changes: StateUpdate<TConfig>) => {
-              if (key in changes) {
-                setValue(changes[key] as DerivedState<TConfig>[K]);
-              }
-            },
-            [key]
-          );
-          return unsubscribe;
+        const unsubscribe = subscribe((changes: StateUpdate<TConfig>) => {
+          if (key in changes) {
+            setValueState(changes[key] as DerivedState<TConfig>[K]);
+          }
         }, [key]);
 
-        const updateValue = useCallback(
-          (newValue: DerivedState<TConfig>[K]) => {
-            set({ [key]: newValue } as StateChanges<TConfig>);
-          },
-          [key]
-        );
+        return unsubscribe;
+      }, [key]);
 
-        return [value, updateValue] as const;
-      },
-      [get, set, subscribe]
-    );
+      const setValue = useCallback((newValue: DerivedState<TConfig>[K]) => {
+        set({ [key]: newValue } as StateChanges<TConfig>);
+      }, [key]);
+
+      return [value, setValue, loading] as const;
+    }, [get, set, subscribe]);
 
     const getState = useCallback(() => get(), [get]);
-
-    const setState = useCallback(
-      (newState: StateChanges<TConfig>) => {
-        set(newState);
-      },
-      [set]
-    );
+    const setState = useCallback((newState: StateChanges<TConfig>) => set(newState), [set]);
 
     return {
       useStateItem,

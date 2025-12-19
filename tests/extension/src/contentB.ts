@@ -1,21 +1,18 @@
-
 import { connect } from "crann-fork";
 import { config } from "./config";
 
-// Helper to create a test UI with a unique label
 function createTestUI(label: string, topOffset: number) {
   const container = document.createElement("div");
   container.id = `crann-test-container-${label}`;
   container.style.position = "fixed";
   container.style.top = `${topOffset}px`;
-  container.style.right = "10px";
+  container.style.right = "220px";
   container.style.padding = "10px";
-  container.style.backgroundColor = "white";
-  container.style.border = "1px solid #ccc";
+  container.style.backgroundColor = "#f8f8ff";
+  container.style.border = "1px solid #99c";
   container.style.borderRadius = "5px";
-  container.style.zIndex = (10000 + topOffset).toString();
+  container.style.zIndex = (11000 + topOffset).toString();
 
-  // Add a header with close button
   const header = document.createElement("div");
   header.style.display = "flex";
   header.style.justifyContent = "space-between";
@@ -25,7 +22,7 @@ function createTestUI(label: string, topOffset: number) {
   const title = document.createElement("span");
   title.textContent = `Crann Test Panel (${label})`;
   title.style.fontWeight = "bold";
-  title.style.color = "black";
+  title.style.color = "#333366";
 
   const closeButton = document.createElement("button");
   closeButton.textContent = "✕";
@@ -40,14 +37,13 @@ function createTestUI(label: string, topOffset: number) {
   header.appendChild(closeButton);
   container.appendChild(header);
 
-  // Add toggle functionality
   closeButton.addEventListener("click", () => {
     container.style.display = "none";
   });
 
   const counterDisplay = document.createElement("div");
   counterDisplay.id = `counter-display-${label}`;
-  counterDisplay.style.color = "black";
+  counterDisplay.style.color = "#333366";
   counterDisplay.textContent = "Counter: 0";
   container.appendChild(counterDisplay);
 
@@ -70,7 +66,7 @@ function createTestUI(label: string, topOffset: number) {
   const resultDisplay = document.createElement("div");
   resultDisplay.id = `result-display-${label}`;
   resultDisplay.style.marginTop = "10px";
-  resultDisplay.style.color = "black";
+  resultDisplay.style.color = "#333366";
   container.appendChild(resultDisplay);
 
   document.body.appendChild(container);
@@ -88,7 +84,6 @@ function createTestUI(label: string, topOffset: number) {
   };
 }
 
-// Function to create a Crann client and UI
 function createCrannClient(label: string, topOffset: number) {
   const { get, subscribe, onReady, callAction } = connect(config, {
     debug: true,
@@ -163,6 +158,5 @@ function createCrannClient(label: string, topOffset: number) {
   });
 }
 
-// Inject two independent Crann clients in the same tab
-createCrannClient("A", 10); // Top panel
-createCrannClient("B", 170); // Lower panel, offset to avoid overlap
+// This script acts as a second, independent Crann client
+createCrannClient("B", 170);

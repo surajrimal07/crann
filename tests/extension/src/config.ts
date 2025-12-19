@@ -1,4 +1,4 @@
-import { createConfig, Partition, Persistence } from "crann";
+import { createConfig, Partition, Persistence } from "crann-fork";
 import { BrowserLocation } from "porter-source-fork";
 
 // Define our test configuration
@@ -11,6 +11,8 @@ export const config = createConfig({
     default: "",
     partition: Partition.Instance,
   },
+
+  
 
   // State that persists between sessions
   timesUsed: {

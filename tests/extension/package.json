@@ -8,7 +8,7 @@
     "watch": "tsc --watch"
   },
   "dependencies": {
-    "crann": "file:../..",
+    "crann-fork": "file:../..",
     "mutative": "^1.2.0",
     "webextension-polyfill": "^0.12.0"
   },

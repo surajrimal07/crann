@@ -1,20 +1,14 @@
-import { connect } from 'porter-source';
+import { connect } from "crann-fork";
 
-const [post, onMessage, getAgentMetadata] = connect();
+import { config } from '../config';
+
+
+const { get, subscribe, onReady, callAction } = connect(config, { debug: true });
 
 let messageCount = 0;
 let messageInterval: NodeJS.Timeout | null = null;
 let isTestRunning = false;
 
-// Set up test message handlers
-onMessage({
-  'echo-response': (message) => {
-    log(`Received echo: ${JSON.stringify(message.payload)}`);
-  },
-  'status-response': (message) => {
-    log(`Service worker status: ${JSON.stringify(message.payload)}`);
-  },
-});
 
 function log(message: string) {
   const logElement = document.getElementById('log');
@@ -40,7 +34,7 @@ function sendTestMessage() {
   };
 
   try {
-    post(message);
+    callAction(message.action, message.payload);
     log(`Sent message: ${JSON.stringify(message)}`);
   } catch (error) {
     log(`Failed to send message: ${error}`);
@@ -97,5 +91,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Log initial connection
   log('Sidepanel connected');
-  log(`Agent metadata: ${JSON.stringify(getAgentMetadata())}`);
+
+  // Crann state and reactivity tests
+  log('Initial state: ' + JSON.stringify(get()));
+  subscribe((changes) => {
+    log('State changed: ' + JSON.stringify(changes));
+  });
+
+  // Test increment action
+  callAction('increment', 1).then((result) => {
+    log('Incremented: ' + result);
+  });
+
+  // Test getCurrentTime
+  callAction('getCurrentTime').then((result) => {
+    log('Current time: ' + result.time);
+  });
+
+  // Test fetchData
+  callAction('fetchData', 'https://example.com').then((result) => {
+    log('Fetched data: ' + JSON.stringify(result.data));
+  });
+
+  // Test error handling
+  callAction('non-existent').catch((err) => {
+    log('Expected error: ' + err);
+  });
 });

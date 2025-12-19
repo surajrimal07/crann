@@ -7,7 +7,7 @@ const scriptsDistDir = './dist/scripts';
 const distDir = './dist';
 const manifestPath = './manifest.json';
 
-const entryPoints = ['./src/content.ts', './src/background.ts'];
+const entryPoints = ['./src/content.ts','./src/contentB.ts','./src/contentC.ts','./src/contentD.ts', './src/background.ts'];
 const assets = ['./src/assets'];
 const contentSrcDirs = ['popup', 'sidepanel'];
 

@@ -38,7 +38,7 @@ export class Crann<TConfig extends AnyConfig> {
   private storagePrefix = "crann_";
   private porter = source("crann", { debug: false });
   private rpcEndpoint: ReturnType<typeof createCrannRPCAdapter>;
-  private logger: Logger;
+  // private logger: Logger;
 
   constructor(private config: TConfig, options?: CrannOptions) {
     // Set the debug flag globally
@@ -48,9 +48,9 @@ export class Crann<TConfig extends AnyConfig> {
     }
     this.storagePrefix = options?.storagePrefix ?? this.storagePrefix;
 
-    // Set up the core logger
-    this.logger = Logger.forContext("Core");
-    this.logger.log("Constructing Crann with new logger");
+    // // Set up the core logger
+    // this.logger = Logger.forContext("Core");
+    // this.logger.log("Constructing Crann with new logger");
 
     // Hydrate the initial state from the config defaults and from storage
     this.defaultInstanceState = this.initializeInstanceDefault();
@@ -59,16 +59,16 @@ export class Crann<TConfig extends AnyConfig> {
     this.hydrate();
 
     // Set up the message handlers
-    this.logger.log("Crann constructed, setting initial message handlers");
+    // this.logger.log("Crann constructed, setting initial message handlers");
     this.porter.on({
       setState: (message, info) => {
         if (!info) {
-          this.logger.warn("setState message heard from unknown agent");
+          // this.logger.warn("setState message heard from unknown agent");
           return;
         }
 
         const agentTag = getAgentTag(info);
-        this.logger.withTag(agentTag).log("Setting state:", message);
+        // this.logger.withTag(agentTag).log("Setting state:", message);
         this.set(message.payload.state, info.id);
       },
     });
@@ -79,33 +79,33 @@ export class Crann<TConfig extends AnyConfig> {
     // Once the agents are connected and have set up their listeners, send them the initial state
     this.porter.onMessagesSet((info: AgentInfo) => {
       if (!info) {
-        this.logger.error("Messages set but no agent info.", { info });
+        // this.logger.error("Messages set but no agent info.", { info });
         return;
       }
 
       const agentTag = getAgentTag(info);
-      this.logger.withTag(agentTag).log("onMessagesSet received for agent:", {
-        id: info.id,
-        context: info.location.context,
-        tabId: info.location.tabId,
-        frameId: info.location.frameId,
-        alreadyInitialized: agentsInitialized.has(info.id),
-      });
+      // this.logger.withTag(agentTag).log("onMessagesSet received for agent:", {
+      //   id: info.id,
+      //   context: info.location.context,
+      //   tabId: info.location.tabId,
+      //   frameId: info.location.frameId,
+      //   alreadyInitialized: agentsInitialized.has(info.id),
+      // });
 
       // Skip sending initialState if we've already sent it to this agent
       if (agentsInitialized.has(info.id)) {
-        this.logger
-          .withTag(agentTag)
-          .log("Already sent initialState to agent, skipping:", info.id);
+        // this.logger
+        //   .withTag(agentTag)
+        //   .log("Already sent initialState to agent, skipping:", info.id);
         return;
       }
 
       // Add the agent to the set of agents we've already sent initialState to
       agentsInitialized.add(info.id);
 
-      this.logger
-        .withTag(agentTag)
-        .log("Messages set received. Sending initial state.", { info });
+      // this.logger
+      //   .withTag(agentTag)
+      //   .log("Messages set received. Sending initial state.", { info });
       const fullState = this.get(info.id);
       this.porter.post(
         {
@@ -121,19 +121,19 @@ export class Crann<TConfig extends AnyConfig> {
     // Handle agent connection and disconnection
     this.porter.onConnect((info: AgentInfo) => {
       if (!info) {
-        this.logger.error("Agent connected but no agent info.", { info });
+        // this.logger.error("Agent connected but no agent info.", { info });
         return;
       }
       const agentTag = getAgentTag(info);
-      this.logger.withTag(agentTag).log("Agent connected", { info });
+      // this.logger.withTag(agentTag).log("Agent connected", { info });
       this.addInstance(info.id, agentTag);
       this.porter.onDisconnect((info: AgentInfo) => {
-        this.logger
-          .withTag(getAgentTag(info))
-          .log(
-            "Agent disconnect heard. Connection type, context and location:",
-            { info }
-          );
+        // this.logger
+        //   .withTag(getAgentTag(info))
+        //   .log(
+        //     "Agent disconnect heard. Connection type, context and location:",
+        //     { info }
+        //   );
         this.removeInstance(info.id);
       });
     });
@@ -159,10 +159,6 @@ export class Crann<TConfig extends AnyConfig> {
 
     const stateGetter = () => {
       const currentState = this.get();
-      this.logger.log(
-        "State getter called, returning current state:",
-        currentState
-      );
       return currentState;
     };
 
@@ -180,9 +176,6 @@ export class Crann<TConfig extends AnyConfig> {
   ): Crann<TConfig> {
     if (!Crann.instance) {
       Crann.instance = new Crann(config, options);
-    } else if (options?.debug) {
-      const logger = Logger.forContext("Core");
-      logger.log("Instance requested and already existed, returning");
     }
     return Crann.instance;
   }
@@ -194,45 +187,43 @@ export class Crann<TConfig extends AnyConfig> {
    */
   private async addInstance(key: string, agentTag: string): Promise<void> {
     if (!this.instances.has(key)) {
-      this.logger.withTag(agentTag).log("Adding instance from agent key");
+      // this.logger.withTag(agentTag).log("Adding instance from agent key");
       const initialInstanceState = {
         ...this.defaultInstanceState,
       } as DerivedInstanceState<TConfig>;
       this.instances.set(key, initialInstanceState);
-    } else {
-      this.logger
-        .withTag(agentTag)
-        .log("Instance was already registered, ignoring request from key");
     }
+
+    // else {
+    //   this.logger
+    //     .withTag(agentTag)
+    //     .log("Instance was already registered, ignoring request from key");
+    // }
   }
 
   private async removeInstance(key: string): Promise<void> {
     if (this.instances.has(key)) {
-      this.logger.withTag(key).log("Remove instance requested");
+      // this.logger.withTag(key).log("Remove instance requested");
       this.instances.delete(key);
-    } else {
-      this.logger
-        .withTag(key)
-        .log("Remove instance requested but it did not exist!");
     }
+    //  else {
+    //   this.logger
+    //     .withTag(key)
+    //     .log("Remove instance requested but it did not exist!");
+    // }
   }
 
   @trackStateChange
   public async setServiceState(
     state: Partial<DerivedServiceState<TConfig>>
   ): Promise<void> {
-    this.logger.log("Request to set service state with update:", state);
-    this.logger.log("Existing service state was ", this.serviceState);
+    // this.logger.log("Request to set service state with update:", state);
+    // this.logger.log("Existing service state was ", this.serviceState);
     const update = { ...this.serviceState, ...state };
     if (!deepEqual(this.serviceState, update)) {
-      this.logger.log(
-        "Confirmed new state was different than existing so proceeding to persist then notify all connected instances."
-      );
       this.serviceState = update;
       await this.persist(state);
       this.notify(state as StateChanges<TConfig>);
-    } else {
-      this.logger.log("New state seems to be the same as existing, skipping");
     }
   }
 
@@ -241,21 +232,14 @@ export class Crann<TConfig extends AnyConfig> {
     key: string,
     state: Partial<DerivedInstanceState<TConfig>>
   ): Promise<void> {
-    this.logger
-      .withTag(key)
-      .log("Request to update instance state, update:", state);
+    // this.logger
+    //   .withTag(key)
+    //   .log("Request to update instance state, update:", state);
     const currentState = this.instances.get(key) || this.defaultInstanceState;
     const update = { ...currentState, ...state };
     if (!deepEqual(currentState, update)) {
-      this.logger
-        .withTag(key)
-        .log("Instance state update is different, updating and notifying.");
       this.instances.set(key, update);
       this.notify(state as StateChanges<TConfig>, key);
-    } else {
-      this.logger
-        .withTag(key)
-        .log("Instance state update is not different, skipping update.");
     }
   }
 
@@ -264,8 +248,6 @@ export class Crann<TConfig extends AnyConfig> {
   private async persist(
     state?: Partial<DerivedServiceState<TConfig>>
   ): Promise<void> {
-    this.logger.log("Persisting state");
-    let wasPersisted = false;
     for (const key in state || this.serviceState) {
       const item = this.config[key] as ConfigItem<any>;
       const persistence = item.persist || "none";
@@ -277,27 +259,20 @@ export class Crann<TConfig extends AnyConfig> {
           await browser.storage.session.set({
             [this.storagePrefix + (key as string)]: value,
           });
-          wasPersisted = true;
           break;
         case "local":
           await browser.storage.local.set({
             [this.storagePrefix + (key as string)]: value,
           });
-          wasPersisted = true;
           break;
         default:
           break;
       }
     }
-    if (wasPersisted) {
-      this.logger.log("State was persisted");
-    } else {
-      this.logger.log("Nothing to persist");
-    }
   }
 
   public async clear(): Promise<void> {
-    this.logger.log("Clearing state");
+    // this.logger.log("Clearing state");
     this.serviceState = this.defaultServiceState;
     this.instances.forEach((_, key) => {
       this.instances.set(key, this.defaultInstanceState);
@@ -307,7 +282,7 @@ export class Crann<TConfig extends AnyConfig> {
   }
 
   public subscribe(listener: StateChangeListener<TConfig>): void {
-    this.logger.log("Subscribing to state");
+    // this.logger.log("Subscribing to state");
     this.stateChangeListeners.push(listener);
   }
 
@@ -318,20 +293,17 @@ export class Crann<TConfig extends AnyConfig> {
     const state = key ? this.get(key) : this.get();
 
     if (this.stateChangeListeners.length > 0) {
-      this.logger.log("Notifying state change listeners in source");
       this.stateChangeListeners.forEach((listener) => {
         listener(state, changes, agent?.info);
       });
     }
 
     if (key && agent?.info.location) {
-      this.logger.withTag(key).log("Notifying of state change.");
       this.porter.post(
         { action: "stateUpdate", payload: { state: changes } },
         agent.info.location
       );
     } else {
-      this.logger.log("Notifying everyone");
       // for every key of this.instances, post the state update to the corresponding key
       this.instances.forEach((_, key) => {
         this.porter.post(
@@ -402,44 +374,55 @@ export class Crann<TConfig extends AnyConfig> {
     }
 
     if (key && Object.keys(instance).length > 0) {
-      this.logger.withTag(key).log("Setting instance state:", instance);
+      // this.logger.withTag(key).log("Setting instance state:", instance);
       this.setInstanceState(key, instance);
     }
     if (Object.keys(worker).length > 0) {
-      this.logger.log("Setting service state:", worker);
+      // this.logger.log("Setting service state:", worker);
       this.setServiceState(worker);
     }
   }
 
   private async hydrate(): Promise<void> {
-    this.logger.log("Hydrating state from storage.");
-    const local = await browser.storage.local.get(null);
-    const session = await browser.storage.session.get(null);
-    const combined = { ...local, ...session };
+  // Prepare lists of keys to fetch per storage type
+  const localKeys: string[] = [];
+  const sessionKeys: string[] = [];
 
-    this.logger.log("Storage data is:", { local, session, combined });
+  for (const key in this.config) {
+    const item = this.config[key];
+    if (!isStateItem(item)) continue;
 
-    const update: Partial<DerivedServiceState<TConfig>> = {}; // Cast update as Partial<DerivedState<TConfig>>
-    let hadItems = false;
-    for (const prefixedKey in combined) {
-      const key = this.removePrefix(prefixedKey);
-      this.logger.log(`Checking storage key ${prefixedKey} -> ${key}`);
-
-      if (this.config.hasOwnProperty(key)) {
-        const value = combined[prefixedKey];
-
-        this.logger.log(`Found storage value for ${key}:`, value);
-        update[key as keyof DerivedServiceState<TConfig>] = value;
-        hadItems = true;
-      }
+    switch (item.persist) {
+      case "local":
+        localKeys.push(this.storagePrefix + key);
+        break;
+      case "session":
+        sessionKeys.push(this.storagePrefix + key);
+        break;
+      default:
+        break;
     }
-    if (hadItems) {
-      this.logger.log("Hydrated some items.");
-    } else {
-      this.logger.log("No items found in storage.");
-    }
-    this.serviceState = { ...this.defaultServiceState, ...update };
   }
+
+  // Batch fetch only necessary keys
+  const [localData, sessionData]: [Record<string, any>, Record<string, any>] = await Promise.all([
+    localKeys.length ? browser.storage.local.get(localKeys) : Promise.resolve({}),
+    sessionKeys.length ? browser.storage.session.get(sessionKeys) : Promise.resolve({}),
+  ]);
+
+  const combined = { ...localData, ...sessionData };
+
+  const update: Partial<DerivedServiceState<TConfig>> = {};
+
+  for (const prefixedKey in combined) {
+    const key = this.removePrefix(prefixedKey);
+    if (this.config.hasOwnProperty(key)) {
+      update[key as keyof DerivedServiceState<TConfig>] = combined[prefixedKey];
+    }
+  }
+  // Merge into default service state
+  this.serviceState = { ...this.defaultServiceState, ...update };
+}
 
   private removePrefix(key: string): string {
     if (key.startsWith(this.storagePrefix)) {
@@ -460,34 +443,34 @@ export class Crann<TConfig extends AnyConfig> {
   }
 
   private initializeServiceDefault(): DerivedServiceState<TConfig> {
-    this.logger.log("Initializing service default state");
-    this.logger.log("Config is:", this.config);
+    // this.logger.log("Initializing service default state");
+    // this.logger.log("Config is:", this.config);
 
     const serviceState: any = {};
     Object.keys(this.config).forEach((key) => {
       const item = this.config[key];
-      this.logger.log("Item is:", item);
+      // this.logger.log("Item is:", item);
       if (
         isStateItem(item) &&
         (!item.partition || item.partition === Partition.Service)
       ) {
         serviceState[key] = item.default;
-        this.logger.log(
-          "Setting service state for key:",
-          key,
-          "to",
-          item.default
-        );
+        // this.logger.log(
+        //   "Setting service state for key:",
+        //   key,
+        //   "to",
+        //   item.default
+        // );
       }
     });
-    this.logger.log("Final service state is:", serviceState);
+    // this.logger.log("Final service state is:", serviceState);
     return serviceState;
   }
 
   public subscribeToInstanceReady(
     listener: (instanceId: string, agent: AgentInfo) => void
   ): () => void {
-    this.logger.log("Subscribing to instance ready events");
+    // this.logger.log("Subscribing to instance ready events");
     this.instanceReadyListeners.push(listener);
 
     this.instances.forEach((_, instanceId) => {
@@ -498,7 +481,7 @@ export class Crann<TConfig extends AnyConfig> {
     });
 
     return () => {
-      this.logger.log("Unsubscribing from instance ready events");
+      // this.logger.log("Unsubscribing from instance ready events");
       const index = this.instanceReadyListeners.indexOf(listener);
       if (index !== -1) {
         this.instanceReadyListeners.splice(index, 1);
@@ -508,8 +491,8 @@ export class Crann<TConfig extends AnyConfig> {
 
   private notifyInstanceReady(instanceId: string, info: AgentInfo): void {
     if (this.instanceReadyListeners.length > 0) {
-      const agentTag = getAgentTag(info);
-      this.logger.withTag(agentTag).log("Notifying instance ready listeners");
+      // const agentTag = getAgentTag(info);
+      // this.logger.withTag(agentTag).log("Notifying instance ready listeners");
       this.instanceReadyListeners.forEach((listener) => {
         listener(instanceId, info);
       });

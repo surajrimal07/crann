@@ -1,6 +1,6 @@
-import { create } from "crann";
+import { create } from "crann-fork";
 import { config } from "./config";
-import { PorterContext } from "porter-source";
+import { PorterContext } from "porter-source-fork";
 
 // Initialize Crann in the service worker
 const crann = create(config, { debug: true });
@@ -19,16 +19,6 @@ crann.subscribe((state, changes, agent) => {
 //   console.log("Agent info:", agent);
 // });
 
-// Example of finding an instance
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === "complete") {
-    const instanceId = crann.findInstance({
-      context: PorterContext.ContentScript,
-      tabId,
-      frameId: 0,
-    });
-  }
-});
 
 // Example of querying agents
 setInterval(() => {
