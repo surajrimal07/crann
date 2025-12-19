@@ -16,9 +16,9 @@ import {
   StateChanges,
   MergeStateTypes,
 } from "./model/crann.model";
-import { AgentInfo, source, Agent } from "porter-source";
+import { AgentInfo, source, Agent } from "porter-source-fork";
 import { deepEqual } from "./utils/deepEqual";
-import { BrowserLocation } from "porter-source";
+import { BrowserLocation } from "porter-source-fork";
 import { trackStateChange } from "./utils/tracking";
 import { DebugManager } from "./utils/debug";
 import { createCrannRPCAdapter } from "./rpc/adapter";
@@ -355,24 +355,6 @@ export class Crann<TConfig extends AnyConfig> {
     return { ...this.serviceState, ...this.instances.get(key) };
   }
 
-  // Todo: Should we return the instance data? What is the point of this.
-  public findInstance(location: BrowserLocation): string | null {
-    const agent = this.porter.getAgentByLocation(location);
-    if (!agent) {
-      this.logger.log("Could not find agent for location:", { location });
-      return null;
-    }
-    for (const [key, instance] of this.instances) {
-      if (key === agent.info.id) {
-        this.logger.log("Found instance for key:", key);
-        return key;
-      }
-    }
-    this.logger.log("Could not find instance for context and location:", {
-      location,
-    });
-    return null;
-  }
 
   // Convenience re-export of the porter-source queryAgents method.
   public queryAgents(query: Partial<BrowserLocation>): Agent[] {
@@ -577,7 +559,6 @@ export interface CrannAPI<TConfig extends AnyConfig> {
   onInstanceReady: (
     listener: (instanceId: string, agent: AgentInfo) => void
   ) => () => void;
-  findInstance: (location: BrowserLocation) => string | null;
   queryAgents: (query: Partial<BrowserLocation>) => Agent[];
   clear: () => Promise<void>;
 }
@@ -593,7 +574,6 @@ export function create<TConfig extends AnyConfig>(
     set: instance.set.bind(instance),
     subscribe: instance.subscribe.bind(instance),
     onInstanceReady: instance.subscribeToInstanceReady.bind(instance),
-    findInstance: instance.findInstance.bind(instance),
     queryAgents: instance.queryAgents.bind(instance),
     clear: instance.clear.bind(instance),
   };

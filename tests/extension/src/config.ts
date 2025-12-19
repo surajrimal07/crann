@@ -1,6 +1,5 @@
 import { createConfig, Partition, Persistence } from "crann";
-import { BrowserLocation } from "porter-source";
-import { AnyConfig, CrannConfig } from "../../../dist/types/model/crann.model";
+import { BrowserLocation } from "porter-source-fork";
 
 // Define our test configuration
 export const config = createConfig({

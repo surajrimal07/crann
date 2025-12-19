@@ -12,7 +12,7 @@ import {
   isActionItem,
   StateChanges,
 } from "./model/crann.model";
-import { AgentInfo, connect as connectPorter } from "porter-source";
+import { AgentInfo, connect as connectPorter } from "porter-source-fork";
 import { createCrannRPCAdapter } from "./rpc/adapter";
 import { Logger } from "./utils/logger";
 import { getAgentTag } from "./utils/agent";
@@ -72,7 +72,7 @@ export function connect<TConfig extends AnyConfig>(
   porter.onDisconnect(() => {
     logger.log("Porter connection lost, updating connection status");
     connectionStatus = { connected: false };
-    
+
     // Notify disconnect callbacks
     disconnectCallbacks.forEach((callback) => {
       try {
@@ -81,7 +81,7 @@ export function connect<TConfig extends AnyConfig>(
         logger.error("Error in disconnect callback:", error);
       }
     });
-    
+
     // Notify onReady callbacks about disconnection
     readyCallbacks.forEach((callback) => {
       try {
@@ -95,12 +95,12 @@ export function connect<TConfig extends AnyConfig>(
   porter.onReconnect((info: AgentInfo) => {
     logger.log("Porter reconnected, updating connection status", info);
     connectionStatus = { connected: true, agent: info };
-    
+
     // Update agent info
     _myInfo = info;
     _myTag = getAgentTag(info);
     logger.setTag(_myTag);
-    
+
     // Notify reconnect callbacks
     reconnectCallbacks.forEach((callback) => {
       try {
@@ -109,7 +109,7 @@ export function connect<TConfig extends AnyConfig>(
         logger.error("Error in reconnect callback:", error);
       }
     });
-    
+
     // Notify onReady callbacks about reconnection
     readyCallbacks.forEach((callback) => {
       try {

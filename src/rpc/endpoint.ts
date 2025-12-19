@@ -1,4 +1,3 @@
-import { createBasicEncoder } from "./encoding";
 import type {
   MessageEndpoint,
   RemoteCallable,
@@ -13,13 +12,6 @@ import type {
 import { ActionsConfig, SetStateFunction } from "../model/crann.model";
 import { Logger } from "../utils/logger";
 import { getAgentTag } from "../utils/agent";
-
-const CALL = 0;
-const RESULT = 1;
-const TERMINATE = 2;
-const RELEASE = 3;
-const FUNCTION_APPLY = 5;
-const FUNCTION_RESULT = 6;
 
 type AnyFunction = (...args: any[]) => any;
 
